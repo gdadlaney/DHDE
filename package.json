@@ -1,0 +1,21 @@
+{
+  "name": "hie-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "hie.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^1.18.6"
+  },
+  "dependencies": {
+    "connect-busboy": "0.0.2",
+    "express": "^4.16.4",
+    "fs-extra": "^7.0.1",
+    "path": "^0.12.7",
+    "request": "^2.88.0"
+  }
+}
