@@ -1,3 +1,7 @@
+# Temporary folder for adding your files
+temp/
+hie_dir/*
+
 # Logs
 logs
 *.log
