@@ -11,7 +11,8 @@ app.get('/', (req, res) => {
 app.get('/api/documents', (req, res) => {
 	const fs = require('fs');
 	// todo - if no exception caught
-	res.send(listFiles(dir_path));
+	listFiles(dir_path, res);
+	// res.send(listFiles(dir_path));		// not possible - timing issues
 });
 
 // step 2: send file back on GET(communication in opposite direction)
@@ -51,14 +52,15 @@ app.post('/api/documents', (req, res) => {
 app.listen(3000, () => console.log('Listening on port 3000...'));
 
 // Helper Methods
-function listFiles(dir) {
-	fs.readdir(path=dir, (err, files) => {
+function listFiles(dir, res) {
+	fs.readdir(dir, (err, files) => {
 		if (err) {
 			console.log('Error while reading files from directory');
 			// todo - throw exeception
 		} else {
 			// todo - logic to return on xml files
-			return files;
+			// return files;							// return from callback not possible!
+			res.send(files);
 		}
 	});
 }
