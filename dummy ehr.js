@@ -19,4 +19,4 @@ const form = req.form();
 form.append('file', fs.createReadStream(filepath));
 // docs - don't we need to submit the form or something?
 
-// todo - step 2: get the xml file back and print. No need to store it on fs.
+// todo - step 2: send a GET request for a ccda & print. Should it be stored on disk?

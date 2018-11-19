@@ -14,7 +14,6 @@
   "dependencies": {
     "connect-busboy": "0.0.2",
     "express": "^4.16.4",
-    "fs-extra": "^7.0.1",
     "path": "^0.12.7",
     "request": "^2.88.0"
   }

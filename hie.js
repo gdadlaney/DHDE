@@ -14,17 +14,17 @@ app.get('/api/documents', (req, res) => {
 	res.send(listFiles(dir_path));
 });
 
-// 2nd step
+// step 2: send file back on GET(communication in opposite direction)
 // app.get('/api/documents/:id', (req, res) => {
 	// the above get with a find inside it.
 // });
 
+// step 1: Accepting file, sent via POST request
 // init for accepting post request
 const busboy = require('connect-busboy');	// middleware for form/file upload
-const path = require('path');				// used for file path
-const fs = require('fs-extra');				// File System - for file manipulation - try fs?
+const path = require('path');				// easy way to handle file paths
+const fs = require('fs');
 app.use(busboy());
-// app.use(express.static(path.join(__dirname, 'public')));		// delete?
 
 app.post('/api/documents', (req, res) => {
 	// todo - check if res.body contains a valid xml file
@@ -51,36 +51,6 @@ app.post('/api/documents', (req, res) => {
 app.listen(3000, () => console.log('Listening on port 3000...'));
 
 // Helper Methods
-function readFile(path) {
-	let html_lines = '';
-	let flag = false;
-	console.log("function called");
-	const lineReader = require('readline').createInterface({
-		input: fs.createReadStream(path)
-	});
-	lineReader.on('line', (line) => {
-		html_lines += line+'\n';
-	});
-	lineReader.on('close', () => {
-		console.log(html_lines);
-		return html_lines;
-		flag = true;
-	});
-
-	while (!flag)
-		setTimeout((a=1)=>{console.log(a++);}, 2000);
-
-	return html_lines;
-}
-
-// reads complete file in memory - can be a problem for huge files.
-function readFileSync(path) {
-	var lines = require('fs').readFileSync(filename=path, 'utf-8')
-    .split('\n')
-	.filter(Boolean);
-	return lines.join("\n");
-}
-
 function listFiles(dir) {
 	fs.readdir(path=dir, (err, files) => {
 		if (err) {
@@ -92,3 +62,35 @@ function listFiles(dir) {
 		}
 	});
 }
+
+// reads complete file in memory - can be a problem for huge files.
+function readFileSync(path) {
+	var lines = require('fs').readFileSync(filename=path, 'utf-8')
+    .split('\n')
+	.filter(Boolean);
+	return lines.join("\n");
+}
+
+// Fails, // wanted to return html_lines form readFile() once file was closed, 
+// but this fails, an empty string(initialization) is returned.
+// function readFile(path) {
+// 	let html_lines = '';
+// 	let flag = false;
+// 	console.log("function called");
+// 	const lineReader = require('readline').createInterface({
+// 		input: fs.createReadStream(path)
+// 	});
+// 	lineReader.on('line', (line) => {
+// 		html_lines += line+'\n';
+// 	});
+// 	lineReader.on('close', () => {
+// 		console.log(html_lines);
+//		// return html_lines;
+// 		flag = true;
+// 	});
+
+// 	while (!flag)
+// 		setTimeout((a=1)=>{console.log(a++);}, 2000);
+
+// 	return html_lines;
+// }
