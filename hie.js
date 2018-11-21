@@ -15,9 +15,9 @@ app.get('/api/documents', (req, res) => {
 	// res.send(listFiles(dir_path));		// not possible - timing issues
 });
 
-// step 2: send file back on GET(communication in opposite direction)
-// app.get('/api/documents/:id', (req, res) => {
-	// the above get with a find inside it.
+// step 2: send file on GET request(communication in opposite direction)
+// app.get('/api/documents/:mrn', (req, res) => {
+	// Lokk for the file in dir_path
 // });
 
 // step 1: Accepting file, sent via POST request
