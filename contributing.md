@@ -1,6 +1,7 @@
 ## Style Guide
 1. Use tabs in all files, instead of spaces.
-2. Follow the modern convention of using `let` and `const`, instead of `var` for declaring variables.
+2. Naming conventions - my_var, funcAsync, MyClass.
+3. Follow the modern convention of using `let` and `const`, instead of `var` for declaring variables.
 
 ## About Branches
 - When creating a new feature/change, always create a branch(in git), before making any significant changes to code. This keeps the master branch of the code stable.
