@@ -15,10 +15,30 @@ app.get('/api/documents', (req, res) => {
 	// res.send(listFiles(dir_path));		// not possible - timing issues
 });
 
-// step 2: send file on GET request(communication in opposite direction)
-// app.get('/api/documents/:mrn', (req, res) => {
-	// Lokk for the file in dir_path
-// });
+// step 2: send file back on GET(communication in opposite direction)
+app.get('/api/documents/:mrn', (req, res) => {
+	// the above get with a find inside it.
+	const fs = require('fs');
+	const mrn_path = path.join(__dirname, dir_path, req.params.mrn + ".xml");
+
+	try {
+	    fs.statSync(mrn_path);			// using statSync instead of readdirSync
+
+	    // fs.readFile(mrn_path, function(err, buf) {
+	    // 	if (err) 
+	    // 		console.log(err);
+	    // 	else
+	    // 		res.send(buf.toString());
+	    // });
+
+	    res.sendFile(mrn_path);
+	}
+	catch (err) {
+	  	if (err.code === 'ENOENT') {
+	    	res.send('file or directory does not exist');
+		}
+	}
+});
 
 // step 1: Accepting file, sent via POST request
 // init for accepting post request
@@ -67,7 +87,7 @@ function listFiles(dir, res) {
 
 // reads complete file in memory - can be a problem for huge files.
 function readFileSync(path) {
-	var lines = require('fs').readFileSync(filename=path, 'utf-8')
+	 lines = require('fs').readFileSync(filename=path, 'utf-8')
     .split('\n')
 	.filter(Boolean);
 	return lines.join("\n");
