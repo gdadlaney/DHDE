@@ -32,6 +32,19 @@ app.post('/api/documents', (req, res) => {
 
 	let complete_path;
 	let fstream;
+	// let res_obj = { status: 'file upload failed', data: '' };			// initialization
+	let res_obj = { status: 'file upload failed', data: '' };
+	let metadata = { pat_id:-1, ehr_id:-1, doc_id:-1, mrn:-1 };
+	// let metadata2 = [];
+	let flags = {};
+	flags.executionComplete = false;
+	flags.dataSent = false;
+
+	req.on('form', () => {
+		console.log("hi");	
+	});
+	
+	// collect file
 	req.pipe(req.busboy);
 	req.busboy.on('file', function (fieldname, file, filename) {
 		complete_path = path.join(__dirname, dir_path, filename);
@@ -42,16 +55,68 @@ app.post('/api/documents', (req, res) => {
 		fstream.on('close', () => {    
 			console.log("Upload Finished of: " + filename); 
 			
-			const res_obj = { status: `file: ${filename}, was successfully stored`, id: 1, data: readFileSync(complete_path) };
-			// console.log(res_obj);
-			res.json(res_obj);
+			res_obj.status = `file: ${filename}, was successfully stored`;
+			res_obj.data = readFileSync(complete_path);
+			
+			flags.executionComplete = true;
+			// flags = sendData(res, res_obj, flags);
+			console.log(res_obj);
+			if ( flags.executionComplete === true && flags.dataSent === false ) {
+				res.json(res_obj);
+				flags.dataSent = true;
+			}
 		});
 	});
+
+	// collect metadata - {pat_id, ehr_id, doc_id, mrn}
+	req.busboy.on('field', function(fieldname, val, fieldnameTruncated, valTruncated) {
+		// todo - count for only one of each of the metadata fields, validate length and type for each(using joi)
+		console.log('Field [' + fieldname + ']: value: ' + val + " " + require('util').inspect(val));
+		metadata[fieldname] = val;
+		// metadata2.push({name:fieldname, value:val});
+	});
+
+	// send response
+	req.busboy.on('finish', function() {
+		// todo - if (res_obj.status == 'file upload failed'), return a failed http status code.
+		// todo - if any of the fields in metadata == -1, return a failed http status code.
+
+		// todo - since there is an async call fstream.on('close'), we need to wait for it.
+		// wait for file write to finish	// need a more elegant solution
+		// Din't work - sleeps forever, since node is single-threaded, once an event occurs, it has to execute it completely before moving on to the next event.
+		// const sleep = require('sleep');
+		// while (true) {
+		// 	if ( executionComplete === true )
+		// 		break;
+		// 	else
+		// 		sleep.sleep(1);
+		// }
+		// Didn't work -
+		// const interval = 400; 		// ms
+		// let timer = setInterval(() => {
+		// 	if ( executionComplete === true )
+		// 		clearInterval(timer);
+		// }, interval);
+
+		console.log("finish called!!!");
+		res_obj.metadata = metadata;
+
+		flags = sendData(res, res_obj, flags);			// need a better solution
+		// also have not handled the case where file uplad is finished before .on('finished') is called
+	} );
 });
 
 app.listen(3000, () => console.log('Listening on port 3000...'));
 
 // Helper Methods
+function sendData(res, res_obj, flags) {
+	if ( flags.executionComplete === true && flags.dataSent === false ) {
+		res.json(res_obj);
+		flags.dataSent = true;
+	}
+	return flags;
+}
+
 function listFiles(dir, res) {
 	fs.readdir(dir, (err, files) => {
 		if (err) {
