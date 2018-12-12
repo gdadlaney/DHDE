@@ -137,9 +137,6 @@ function assignMetadata(res_obj, metadata, flags) {		// assigns metadata if not 
 function isMetadataValid(metadata) {
 	// refering - metadata = { pat_id:-1, ehr_id:-1, doc_id:-1, mrn:-1 };
 
-	// todo - add better validations, catch undefined attributes
-	// better validations - validate length and type for each(using joi)
-	// dummy validations
 	Joi = require('joi');
 	const schema = {
 		pat_id: Joi.string().required().regex(/^\d+$/).min(3).max(10),
@@ -176,27 +173,3 @@ function readFileSync(path) {
 	.filter(Boolean);
 	return lines.join("\n");
 }
-
-// Fails, // wanted to return html_lines form readFile() once file was closed, 
-// but this fails, an empty string(initialization) is returned.
-// function readFile(path) {
-// 	let html_lines = '';
-// 	let flag = false;
-// 	console.log("function called");
-// 	const lineReader = require('readline').createInterface({
-// 		input: fs.createReadStream(path)
-// 	});
-// 	lineReader.on('line', (line) => {
-// 		html_lines += line+'\n';
-// 	});
-// 	lineReader.on('close', () => {
-// 		console.log(html_lines);
-//		// return html_lines;
-// 		flag = true;
-// 	});
-
-// 	while (!flag)
-// 		setTimeout((a=1)=>{console.log(a++);}, 2000);
-
-// 	return html_lines;
-// }

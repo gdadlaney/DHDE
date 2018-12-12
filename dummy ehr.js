@@ -28,15 +28,8 @@ form.append('pat_id', "123");
 form.append('ehr_id', "001");
 form.append('doc_id', "456");
 form.append('mrn', "123");
-// docs - don't we need to submit the form or something? - This can be modified until the request is fired on the next cycle of the event-loop(?)
+// We don't need to submit the form manually.
+// Items can be added until the request is fired on the next cycle of the event-loop
 
-/* Data being send in body
-{ 
-    "pat_id": "123",
-    "ehr_id": "001",
-    "doc_id": "456",
-    "mrn": "sample"
-}
-*/
 
 // todo - step 2: send a GET request for a ccda & print. Should it be stored on disk?
