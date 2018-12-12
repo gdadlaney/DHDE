@@ -8,8 +8,15 @@ var req = request.post(url, function handleResponse(err, resp, body) {
 	if (err) {
 		console.log(`Error: ${err}`);
 	} else {
-		const res_obj = JSON.parse(body)
-		console.log(res_obj);
+		if (resp.statusCode === 400	|| resp.statusCode === 422) {
+			const err_msg = body;
+			console.log(resp.statusCode + "Bad Request OR Invalid Data: ");
+			console.log(err_msg);
+		}
+		else {
+			const res_obj = JSON.parse(body)
+			console.log(res_obj);
+		}
 	}
 });
 
@@ -20,7 +27,7 @@ form.append('file', fs.createReadStream(filepath));		// createReadStream() does 
 form.append('pat_id', "123");
 form.append('ehr_id', "001");
 form.append('doc_id', "456");
-form.append('mrn', "sample");		// change this too, when changing the mrn to a number	
+form.append('mrn', "123");
 // docs - don't we need to submit the form or something? - This can be modified until the request is fired on the next cycle of the event-loop(?)
 
 /* Data being send in body
