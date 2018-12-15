@@ -188,7 +188,8 @@ function listFiles(dir, res) {
 
 // reads complete file in memory - can be a problem for huge files.
 function readFileSync(path) {
-	 lines = require('fs').readFileSync(filename=path, 'utf-8')
+	var lines = require('fs').readFileSync(filename=path, 'utf-8')
     .split('\n')
 	.filter(Boolean);
 	return lines.join("\n");
+}
