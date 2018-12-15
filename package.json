@@ -9,11 +9,12 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "nodemon": "^1.18.6"
+    "nodemon": "^1.18.7"
   },
   "dependencies": {
     "connect-busboy": "0.0.2",
     "express": "^4.16.4",
+    "joi": "^14.3.0",
     "path": "^0.12.7",
     "request": "^2.88.0"
   }
