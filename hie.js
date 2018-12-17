@@ -27,9 +27,9 @@ app.get('/api/documents/:mrn', (req, res) => {
 	}
 	catch (err) {
 	  	if (err.code === 'ENOENT')
-	    	res.send(`file ${req.params.mrn + ".xml"} or does not exist in CCDA Store`);
+	    	res.status(404).send(`File: ${req.params.mrn + ".xml"} does not exist in CCDA Store`);		// 404 : Not FOund
 		else
-			res.send(err);
+			res.status(400).send(err);			// 400: Bad Request
 	}
 });
 

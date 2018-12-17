@@ -55,7 +55,7 @@ rl.question("1. Upload file\n2. Request file\nEnter choice: ", (answer) => {
 			if (err)
 				console.log(`Error: ${err}`);
 			else {
-				if (body == 'file or directory does not exist')
+				if (resp.statusCode == 404 || resp.statusCode == 400)
 					console.log(body);
 				else {
 						fs.writeFile(path.join(__dirname, dir_path, requested_mrn + '.xml'), body, function(err, data) {
