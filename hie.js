@@ -15,28 +15,21 @@ app.get('/api/documents', (req, res) => {
 	// res.send(listFiles(dir_path));		// not possible - timing issues
 });
 
-// step 2: send file back on GET(communication in opposite direction)
+// step 2: send file back on GET
 app.get('/api/documents/:mrn', (req, res) => {
 	// the above get with a find inside it.
 	const fs = require('fs');
 	const mrn_path = path.join(__dirname, dir_path, req.params.mrn + ".xml");
 
 	try {
-	    fs.statSync(mrn_path);			// using statSync instead of readdirSync
-
-	    // fs.readFile(mrn_path, function(err, buf) {
-	    // 	if (err) 
-	    // 		console.log(err);
-	    // 	else
-	    // 		res.send(buf.toString());
-	    // });
-
-	    res.sendFile(mrn_path);
+	    fs.statSync(mrn_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
+	    res.sendFile(mrn_path);		// convenient method
 	}
 	catch (err) {
-	  	if (err.code === 'ENOENT') {
-	    	res.send('file or directory does not exist');
-		}
+	  	if (err.code === 'ENOENT')
+	    	res.send(`file ${req.params.mrn + ".xml"} or does not exist in CCDA Store`);
+		else
+			res.send(err);
 	}
 });
 
