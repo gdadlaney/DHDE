@@ -15,10 +15,23 @@ app.get('/api/documents', (req, res) => {
 	// res.send(listFiles(dir_path));		// not possible - timing issues
 });
 
-// step 2: send file on GET request(communication in opposite direction)
-// app.get('/api/documents/:mrn', (req, res) => {
-	// Lokk for the file in dir_path
-// });
+// step 2: send file back on GET
+app.get('/api/documents/:mrn', (req, res) => {
+	// the above get with a find inside it.
+	const fs = require('fs');
+	const mrn_path = path.join(__dirname, dir_path, req.params.mrn + ".xml");
+
+	try {
+	    fs.statSync(mrn_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
+	    res.sendFile(mrn_path);		// convenient method
+	}
+	catch (err) {
+	  	if (err.code === 'ENOENT')
+	    	res.status(404).send(`File: ${req.params.mrn + ".xml"} does not exist in CCDA Store`);		// 404 : Not FOund
+		else
+			res.status(400).send(err);			// 400: Bad Request
+	}
+});
 
 // step 1: Accept file(along with metadata), sent via POST request
 // init for accepting post request

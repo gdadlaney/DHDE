@@ -1,0 +1,6 @@
+<note>
+  <to>Alice</to>
+  <from>Bob</from>
+  <heading>Message</heading>
+  <body>Don't let this message get in the hands of Eve!</body>
+</note>
