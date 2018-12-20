@@ -1,3 +1,13 @@
+## Workflow for making changes to code
+1. pull the branch(you want to change, say `master`) from remote
+2. create a new branch, say `branch1`
+3. commit
+4. pull `branch1`, just in case someone had made changes in the branch
+5. push `branch1`
+6. Create a `Pull Request` on github
+---
+
+## Setup + Basics
 1. Install git  
 `sudo apt-get install git`
 
