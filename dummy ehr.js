@@ -13,7 +13,7 @@ const rl = readline.createInterface({
 // tried using a while loop for continuous input
 // unexpected behaviour observed
 // need to look into it
-rl.question("1. Upload file\n2. Request file\nEnter choice: ", (answer) => {
+rl.question("1. Upload file\n2. Request file\n3. EMPI\nEnter choice: ", (answer) => {
 	if (answer == 1) {
 		// step 1: make a POST request to hie.js using request module
 		var req = request.post(url, function handleResponse(err, resp, body) {
@@ -67,6 +67,16 @@ rl.question("1. Upload file\n2. Request file\nEnter choice: ", (answer) => {
 						}
 					});
 				}
+			}
+		});
+	} else if (answer == 3) {
+
+		const get_url = url + '?name=Blaine+Wolfe&country=Kuwait';
+		request.get(get_url, function(err, resp, body) {
+			if (err)
+				console.log(`Error: ${err}`);
+			else {
+				console.log(body);
 			}
 		});
 	}

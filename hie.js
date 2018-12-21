@@ -1,5 +1,7 @@
 const express = require('express');
 const app = express();
+const mysql = require('mysql');
+// const Sequelize = require('sequelize');
 
 const dir_path = './hie_dir';			// name of directory to store the files in 
 
@@ -8,12 +10,13 @@ app.get('/', (req, res) => {
 });
 
 // Show contents of directory - for debugging
-app.get('/api/documents', (req, res) => {
-	const fs = require('fs');
-	// todo - if no exception caught
-	listFiles(dir_path, res);
-	// res.send(listFiles(dir_path));		// not possible - timing issues
-});
+// EMPI doesn't work if this is active
+// app.get('/api/documents', (req, res) => {
+// 	const fs = require('fs');
+// 	// todo - if no exception caught
+// 	listFiles(dir_path, res);
+// 	// res.send(listFiles(dir_path));		// not possible - timing issues
+// });
 
 // step 2: send file back on GET
 app.get('/api/documents/:mrn', (req, res) => {
@@ -118,7 +121,7 @@ app.listen(3000, () => console.log('Listening on port 3000...'));
 
 // Helper Methods
 function sendData(res, res_obj, flags, err_msg) {
-	if ( typeof sendData.err_msg_sent == 'undefined' ) sendData.err_msg_sent = false;		// static variable
+	if ( typeof sendData.err_msg_sent == 'undefined' ) sendData.err_msg_sent = false;		// static letiable
 
 	if ( !flags.valid_metadata && !sendData.err_msg_sent ) {
 		res.status(400).send(err_msg);			// should only execute once					// 400: Bad Request
@@ -181,8 +184,61 @@ function listFiles(dir, res) {
 
 // reads complete file in memory - can be a problem for huge files.
 function readFileSync(path) {
-	var lines = require('fs').readFileSync(filename=path, 'utf-8')
+	let lines = require('fs').readFileSync(filename=path, 'utf-8')
     .split('\n')
 	.filter(Boolean);
 	return lines.join("\n");
 }
+
+// Creation of EMPI
+const con = mysql.createConnection({
+	host: "localhost",
+	user: "root",
+	password: "",
+	database: "dummy_data"
+});
+
+con.connect(function(err) {
+	if (err) throw err
+	console.log("Mysql connected!");
+});
+
+// EMPI stuff
+app.get('/api/documents?', (req, res) => {
+
+	let sql = "SELECT * FROM `patients` WHERE ";
+	let i = 1;
+	for (const key in req.query) {
+		sql += "`"+key+"` LIKE '"+req.query[key]+"'";
+		if (Object.keys(req.query).length > 1 && i != Object.keys(req.query).length) {
+			sql += "AND "
+		}
+		i++;
+	}
+
+	console.log(sql);
+	
+	con.query(sql, function (err, result) {
+	    if (err) throw err;
+	    if (result.length == 1) {
+		    console.log(result);
+			res.send('Response send to client::'+result[0].mrn);
+	    } else {
+	    	res.status(422).send("Invalid Data");
+	    }
+  	});
+});
+
+// Using Sequelize ORM: Testing Mysql connection
+// const sequelize = new Sequelize('dummy_data', 'root', '', {
+// 	host: 'localhost',
+// 	dialect: 'mysql'
+// });
+
+// sequelize.authenticate()
+// 	.then(() => {
+//     	console.log('Connection has been established successfully.');
+// 	})
+//   	.catch(err => {
+//     	console.error('Unable to connect to the database:', err);
+//   	});
