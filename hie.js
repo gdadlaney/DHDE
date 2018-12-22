@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 
 const dir_path = './hie_dir';			// name of directory to store the files in
-const {port}	=	require('./config');	//environment variables
+const {port} = require('./config');		//environment variables
 app.get('/', (req, res) => {
 	res.send("Send a GET or POST request to '/api/documents'");
 });
@@ -86,20 +86,17 @@ app.post('/api/documents', (req, res) => {
 
 			// renaming file: can be done after sending back the response, since it doesn't affect what we send back in the response
 			/**Renaming
-			 * Renames file after storing it
+			 * Renames file after storing it, flags.file_stored is already set
 			 * Sets the name of the file as mrn from metadata
 			 */
-			if (flags.file_stored) {
-				mrn_filename = path.join(__dirname, dir_path, metadata.mrn)
-				fs.rename(complete_path, mrn_filename, (err) => {
-					if (err) {
-						console.log(err);
-					} else {
-						console.log(`File successfully renamed`);
-					}
-
-				});
-			}
+			const mrn_filename = path.join(__dirname, dir_path, metadata.mrn);
+			fs.rename(complete_path, mrn_filename, (err) => {
+				if (err) {
+					console.log(err);
+				} else {
+					console.log(`File successfully renamed`);
+				}
+			});
 
 		});
 
