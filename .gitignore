@@ -1,6 +1,11 @@
-# Temporary folder for adding your files
+# Temporary folder for testing js snippets
 temp/
+
 hie_dir/*
+
+# Does not remain in sync between PCs + Increases modified lines count in commits
+package-lock.json		
+
 
 # Logs
 logs
