@@ -89,7 +89,7 @@ app.post('/api/documents', (req, res) => {
 			 * Renames file after storing it, flags.file_stored is already set
 			 * Sets the name of the file as mrn from metadata
 			 */
-			const mrn_filename = path.join(__dirname, dir_path, metadata.mrn);
+			const mrn_filename = path.join(__dirname, dir_path, metadata.mrn+'.xml');
 			fs.rename(complete_path, mrn_filename, (err) => {
 				if (err) {
 					console.log(err);
