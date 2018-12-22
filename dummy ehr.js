@@ -5,7 +5,7 @@ const path = require('path');
 const readline = require('readline');
 const {
 	port,
-	ehr_id
+	ehr_id,
 } = require('./config'); //environment variables
 const url = `http://localhost:${port}/api/documents`;
 const rl = readline.createInterface({
@@ -49,19 +49,18 @@ rl.question("1. Upload file\n2. Request file\nEnter choice: ", (answer) => {
 
 		rl.close();
 	} else if (answer == 2) {
-		// todo - step 2: send a GET request for a ccda & print. Should it be stored on disk?
-		const dir_path = './ehr_dir/mrn_cache'			// name of directory to store the files in
+		const dir_path = './ehr_dir/mrn_cache'			// name of directory to store the files in 
 		const requested_mrn = '123';
-		const get_url = url + '/' + requested_mrn;
+		const get_url = url + '?name=Blaine+Wolfe&country=Kuwait';
 
-		request.get(get_url, function (err, resp, body) {
+		request.get(get_url, function(err, resp, body) {
 			if (err)
 				console.log(`Error: ${err}`);
 			else {
 				if (resp.statusCode == 404 || resp.statusCode == 400)
 					console.log(body);
 				else {
-						fs.writeFile(path.join(__dirname, dir_path, requested_mrn + '.xml'), body, function(err, data) {
+					fs.writeFile(path.join(__dirname, dir_path, requested_mrn+'.xml'), body, function(err, data) {
 						if (err)
 							console.log(err);
 						else {
