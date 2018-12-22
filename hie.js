@@ -2,6 +2,8 @@ const express = require('express');
 const app = express();
 const mysql = require('mysql');
 // const Sequelize = require('sequelize');
+const path = require('path');				// easy way to handle file paths
+const fs = require('fs');
 
 const dir_path = './hie_dir';			// name of directory to store the files in 
 
@@ -9,38 +11,65 @@ app.get('/', (req, res) => {
 	res.send("Send a GET or POST request to '/api/documents'");
 });
 
-// Show contents of directory - for debugging
-// EMPI doesn't work if this is active
-// app.get('/api/documents', (req, res) => {
-// 	const fs = require('fs');
-// 	// todo - if no exception caught
-// 	listFiles(dir_path, res);
-// 	// res.send(listFiles(dir_path));		// not possible - timing issues
-// });
+// Creation of EMPI
+const con = mysql.createConnection({
+	host: "localhost",
+	user: "root",
+	password: "root123",
+	database: "dummy_data"
+});
 
-// step 2: send file back on GET
-app.get('/api/documents/:mrn', (req, res) => {
-	// the above get with a find inside it.
-	const fs = require('fs');
-	const mrn_path = path.join(__dirname, dir_path, req.params.mrn + ".xml");
+con.connect(function(err) {
+	if (err) throw err
+	console.log("Mysql connected!");
+});
 
-	try {
-	    fs.statSync(mrn_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
-	    res.sendFile(mrn_path);		// convenient method
+// send file back, given identification information
+app.get('/api/documents?', (req, res) => {
+	let sql = "SELECT * FROM `patients` WHERE ";
+	let i = 1;
+	for (const key in req.query) {
+		sql += `${key} LIKE '${req.query[key]}' `;
+		if (Object.keys(req.query).length > 1 && i != Object.keys(req.query).length) {
+			sql += "AND "
+		}
+		i++;
 	}
-	catch (err) {
-	  	if (err.code === 'ENOENT')
-	    	res.status(404).send(`File: ${req.params.mrn + ".xml"} does not exist in CCDA Store`);		// 404 : Not FOund
-		else
-			res.status(400).send(err);			// 400: Bad Request
-	}
+
+	console.log(sql);
+	
+	con.query(sql, function (err, result) {
+	    if (err) throw err;
+	    if (result.length == 1) {
+		    console.log(result);
+			
+			// todo - send pat_id to record_chain and get back mrn
+			const mrn_found = result[0].mrn;
+
+			// check for file in folder and send it back.
+			const mrn_path = path.join(__dirname, dir_path, mrn_found+".xml");
+			try {
+				fs.statSync(mrn_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
+				res.sendFile(mrn_path);		// convenient method
+				console.log(`File: ${mrn_found+".xml"} found & send back successfully`);
+			}
+			catch (err) {
+				console.log('* Error in file lookup');
+				if (err.code === 'ENOENT')
+					res.status(404).send(`File: ${mrn_found+".xml"} does not exist in CCDA Store`);		// 404 : Not FOund
+				else
+					res.status(400).send(err);			// 400: Bad Request
+			}
+	    } else if (result.length == 0)
+			res.status(422).send("No patient found, enter more data");		// 422: Unprocessable entity. The task of returning a file is unprocessable.
+		else if (result.length > 1)
+			res.status(422).send("Many patients found, enter more data");
+  	});
 });
 
 // step 1: Accept file(along with metadata), sent via POST request
 // init for accepting post request
 const busboy = require('connect-busboy');	// middleware for form/file upload(multipart/form-data)
-const path = require('path');				// easy way to handle file paths
-const fs = require('fs');
 app.use(busboy());
 
 app.post('/api/documents', (req, res) => {
@@ -121,7 +150,7 @@ app.listen(3000, () => console.log('Listening on port 3000...'));
 
 // Helper Methods
 function sendData(res, res_obj, flags, err_msg) {
-	if ( typeof sendData.err_msg_sent == 'undefined' ) sendData.err_msg_sent = false;		// static letiable
+	if ( typeof sendData.err_msg_sent == 'undefined' ) sendData.err_msg_sent = false;		// static variable
 
 	if ( !flags.valid_metadata && !sendData.err_msg_sent ) {
 		res.status(400).send(err_msg);			// should only execute once					// 400: Bad Request
@@ -169,19 +198,6 @@ function isMetadataValid(metadata) {
 	return [true];
 }
 
-function listFiles(dir, res) {
-	fs.readdir(dir, (err, files) => {
-		if ( err ) {
-			console.log('Error while reading files from directory');
-			// todo - throw exeception
-		} else {
-			// todo - logic to return on xml files
-			// return files;							// return from callback not possible!
-			res.send(files);
-		}
-	});
-}
-
 // reads complete file in memory - can be a problem for huge files.
 function readFileSync(path) {
 	let lines = require('fs').readFileSync(filename=path, 'utf-8')
@@ -189,45 +205,6 @@ function readFileSync(path) {
 	.filter(Boolean);
 	return lines.join("\n");
 }
-
-// Creation of EMPI
-const con = mysql.createConnection({
-	host: "localhost",
-	user: "root",
-	password: "",
-	database: "dummy_data"
-});
-
-con.connect(function(err) {
-	if (err) throw err
-	console.log("Mysql connected!");
-});
-
-// EMPI stuff
-app.get('/api/documents?', (req, res) => {
-
-	let sql = "SELECT * FROM `patients` WHERE ";
-	let i = 1;
-	for (const key in req.query) {
-		sql += "`"+key+"` LIKE '"+req.query[key]+"'";
-		if (Object.keys(req.query).length > 1 && i != Object.keys(req.query).length) {
-			sql += "AND "
-		}
-		i++;
-	}
-
-	console.log(sql);
-	
-	con.query(sql, function (err, result) {
-	    if (err) throw err;
-	    if (result.length == 1) {
-		    console.log(result);
-			res.send('Response send to client::'+result[0].mrn);
-	    } else {
-	    	res.status(422).send("Invalid Data");
-	    }
-  	});
-});
 
 // Using Sequelize ORM: Testing Mysql connection
 // const sequelize = new Sequelize('dummy_data', 'root', '', {
