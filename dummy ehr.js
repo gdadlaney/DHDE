@@ -2,9 +2,12 @@
 const fs = require('fs');
 const request = require('request');
 const path = require('path');
-const readline = require('readline');	
-
-const url = 'http://localhost:3000/api/documents';
+const readline = require('readline');
+const {
+	port,
+	ehr_id
+} = require('./config'); //environment variables
+const url = `http://localhost:${port}/api/documents`;
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
@@ -16,10 +19,10 @@ const rl = readline.createInterface({
 rl.question("1. Upload file\n2. Request file\nEnter choice: ", (answer) => {
 	if (answer == 1) {
 		// step 1: make a POST request to hie.js using request module
-		var req = request.post(url, function handleResponse(err, resp, body) {
+		let req = request.post(url, function handleResponse(err, resp, body) {
 			if (err) {
 				console.log(`Error: ${err}`);
-			} 
+			}
 			else {
 				if (resp.statusCode === 400	|| resp.statusCode === 422) {
 					const err_msg = body;
@@ -38,7 +41,7 @@ rl.question("1. Upload file\n2. Request file\nEnter choice: ", (answer) => {
 		const form = req.form();
 		form.append('file', fs.createReadStream(filepath));		// createReadStream() does not contain the actual data of a file, but the path. Try to run it from a different system.
 		form.append('pat_id', "123");
-		form.append('ehr_id', "001");
+		form.append('ehr_id', `${ehr_id}`);
 		form.append('doc_id', "456");
 		form.append('mrn', "123");
 		// We don't need to submit the form manually.
@@ -47,8 +50,8 @@ rl.question("1. Upload file\n2. Request file\nEnter choice: ", (answer) => {
 		rl.close();
 	} else if (answer == 2) {
 		// todo - step 2: send a GET request for a ccda & print. Should it be stored on disk?
-		const dir_path = './ehr_dir/mrn_cache'			// name of directory to store the files in 
-		const requested_mrn = 'sample';
+		const dir_path = './ehr_dir/mrn_cache'			// name of directory to store the files in
+		const requested_mrn = '123';
 		const get_url = url + '/' + requested_mrn;
 
 		request.get(get_url, function (err, resp, body) {
