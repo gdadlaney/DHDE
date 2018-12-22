@@ -51,7 +51,7 @@ rl.question("1. Upload file\n2. Request file\nEnter choice: ", (answer) => {
 	} else if (answer == 2) {
 		// todo - step 2: send a GET request for a ccda & print. Should it be stored on disk?
 		const dir_path = './ehr_dir/mrn_cache'			// name of directory to store the files in
-		const requested_mrn = 'sample';
+		const requested_mrn = '123';
 		const get_url = url + '/' + requested_mrn;
 
 		request.get(get_url, function (err, resp, body) {
