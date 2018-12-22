@@ -5,18 +5,25 @@ const mysql = require('mysql');
 const path = require('path');				// easy way to handle file paths
 const fs = require('fs');
 
-const dir_path = './hie_dir';			// name of directory to store the files in 
+const dir_path = './hie_dir';			// name of directory to store the files in
+const {
+	port,
+	sql_user, 
+	sql_pass, 
+	sql_db,
+} = require('./config');		//environment variables
 
 app.get('/', (req, res) => {
-	res.send("Send a GET or POST request to '/api/documents'");
+	res.send("Send a GET or POST request to '/api/documents'"+sql_user+sql_db);
 });
 
+console.log(sql_user);
 // Creation of EMPI
 const con = mysql.createConnection({
 	host: "localhost",
-	user: "root",
-	password: "root123",
-	database: "dummy_data"
+	user: "root",				// variable from .env does not work, why?
+	password: sql_pass,
+	database: sql_db,
 });
 
 con.connect(function(err) {
@@ -29,7 +36,7 @@ app.get('/api/documents?', (req, res) => {
 	let sql = "SELECT * FROM `patients` WHERE ";
 	let i = 1;
 	for (const key in req.query) {
-		sql += `${key} LIKE '${req.query[key]}' `;
+		sql += `${key} LIKE '${req.query[key]}' `;			// Like used for case-insensitivity
 		if (Object.keys(req.query).length > 1 && i != Object.keys(req.query).length) {
 			sql += "AND "
 		}
@@ -61,13 +68,13 @@ app.get('/api/documents?', (req, res) => {
 					res.status(400).send(err);			// 400: Bad Request
 			}
 	    } else if (result.length == 0)
-			res.status(422).send("No patient found, enter more data");		// 422: Unprocessable entity. The task of returning a file is unprocessable.
+			res.status(422).send("No patient found, enter valid data");		// 422: Unprocessable entity. The task of returning a file is unprocessable.
 		else if (result.length > 1)
-			res.status(422).send("Many patients found, enter more data");
+			res.status(422).send("Many patients found, enter more fields");
   	});
 });
 
-// step 1: Accept file(along with metadata), sent via POST request
+// step 1: Accept file(along with metadata) from ehr
 // init for accepting post request
 const busboy = require('connect-busboy');	// middleware for form/file upload(multipart/form-data)
 app.use(busboy());
@@ -85,19 +92,18 @@ app.post('/api/documents', (req, res) => {
 		valid_metadata:false,
 		data_sent: false,
 	};
-	
+
 	// collect file
 	req.pipe(req.busboy);
 	req.busboy.on('file', function (fieldname, file, filename) {
 		flags.file_received = true;
-		complete_path = path.join(__dirname, dir_path, filename);
-		console.log(`Uploading: ${filename} to ${complete_path}`);
 
+		complete_path = path.join(__dirname, dir_path, filename);
 		fstream = fs.createWriteStream(complete_path);
 		file.pipe(fstream);
-		fstream.on('close', () => {    
-			console.log("Upload Finished of: " + filename); 
-			
+		fstream.on('close', () => {
+			console.log("Upload Finished of: " + filename);
+
 			res_obj.status = `file: ${filename}, was successfully stored`;
 			res_obj.data = readFileSync(complete_path);			// redundant, as a verification/ for debugging
 			flags.file_stored = true;
@@ -119,8 +125,21 @@ app.post('/api/documents', (req, res) => {
 			if ( flags.data_sent ) console.log("Data was sent from the 'file write callback'");
 
 			// renaming file: can be done after sending back the response, since it doesn't affect what we send back in the response
-			// todo - rename file with the mrn in metadata using fs.rename()
+			/**Renaming
+			 * Renames file after storing it, flags.file_stored is already set
+			 * Sets the name of the file as mrn from metadata
+			 */
+			const mrn_filename = path.join(__dirname, dir_path, metadata.mrn+'.xml');
+			fs.rename(complete_path, mrn_filename, (err) => {
+				if (err) {
+					console.log(err);
+				} else {
+					console.log(`File successfully renamed`);
+				}
+			});
+
 		});
+
 	});
 
 	// collect metadata - {pat_id, ehr_id, doc_id, mrn}
@@ -141,12 +160,12 @@ app.post('/api/documents', (req, res) => {
 		// repeated section - whichever happens last	// need to find a better way
 		[res_obj, flags, err_msg] = assignMetadata(res_obj, metadata, flags);
 		// res.json(res_obj);
-		flags = sendData(res, res_obj, flags, err_msg);				
+		flags = sendData(res, res_obj, flags, err_msg);
 		if ( flags.data_sent ) console.log("Data was sent from the 'finish event callback'");
 	});
 });
 
-app.listen(3000, () => console.log('Listening on port 3000...'));
+app.listen(port, () => console.log(`Listening on port ${port}...`));
 
 // Helper Methods
 function sendData(res, res_obj, flags, err_msg) {
