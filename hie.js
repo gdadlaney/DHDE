@@ -1,43 +1,137 @@
 const express = require('express');
 const app = express();
+const mysql = require('mysql');
+// const Sequelize = require('sequelize');
+const path = require('path');				// easy way to handle file paths
+const fs = require('fs');
 
-const dir_path = './hie_dir';			// name of directory to store the files in 
+const dir_path = './hie_dir';			// name of directory to store the files in
+const {
+	port,
+	sql_user, 
+	sql_pass, 
+	sql_db,
+} = require('./config');		//environment variables
+const request = require('request');
 
 app.get('/', (req, res) => {
 	res.send("Send a GET or POST request to '/api/documents'");
 });
 
-// Show contents of directory - for debugging
-app.get('/api/documents', (req, res) => {
-	const fs = require('fs');
-	// todo - if no exception caught
-	listFiles(dir_path, res);
-	// res.send(listFiles(dir_path));		// not possible - timing issues
+app.set('view engine', 'ejs');
+app.get('/requestCCDA?', (req, res) => {
+	// if no query params, then show form
+	if ( Object.keys(req.query).length === 0 ) {
+		res.render('requestCCDA');
+	} else {
+		// code copied, refactor into functions
+		let url = `http://localhost:${port}/api/documents`;
+		const dir_path = './ehr_dir/mrn_cache'			// name of directory to store the files in 
+		let get_url = url+'?';
+		const requested_mrn= '123';
+
+		let i = 1;
+		for (const key in req.query) {
+			if (req.query[key].length) {
+				if (i != 1) {
+					get_url += "&"
+				}
+				get_url += `${key}=${req.query[key]}`;
+				i++;
+			}
+		}
+		console.log(get_url);
+
+		request.get(get_url, function(err, resp, body) {
+			if (err) {
+				console.log(`Error: ${err}`);
+				res.send(`Error: ${err}`);
+			} else {
+				if (resp.statusCode == 404 || resp.statusCode == 400) {
+					console.log(body);
+					res.send(body);
+				}
+				else {
+					fs.writeFile(path.join(__dirname, dir_path, requested_mrn+'.xml'), body, function(err, data) {
+						if (err) {
+							console.log(err);
+							res.send(err);
+						} else {
+							console.log("Successfully recieved requested data");
+							console.log(body);
+							res.send(body);
+						}
+					});
+				}
+			}
+		});
+	}
 });
 
-// step 2: send file back on GET
-app.get('/api/documents/:mrn', (req, res) => {
-	// the above get with a find inside it.
-	const fs = require('fs');
-	const mrn_path = path.join(__dirname, dir_path, req.params.mrn + ".xml");
-
-	try {
-	    fs.statSync(mrn_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
-	    res.sendFile(mrn_path);		// convenient method
-	}
-	catch (err) {
-	  	if (err.code === 'ENOENT')
-	    	res.status(404).send(`File: ${req.params.mrn + ".xml"} does not exist in CCDA Store`);		// 404 : Not FOund
-		else
-			res.status(400).send(err);			// 400: Bad Request
-	}
+// Creation of EMPI
+const con = mysql.createConnection({
+	host: "localhost",
+	user: "root",				// variable from .env does not work, why?
+	password: sql_pass,
+	database: sql_db,
 });
 
-// step 1: Accept file(along with metadata), sent via POST request
+con.connect(function(err) {
+	if (err) throw err
+	console.log("Mysql connected!");
+});
+
+// send file back, given identification information
+app.get('/api/documents?', (req, res) => {
+	let sql = "SELECT * FROM `patients` WHERE ";
+	let i = 1;
+	for (const key in req.query) {
+		if (req.query[key].length) {
+			if (i != 1) {
+				sql += "AND "
+			}
+			sql += `${key} LIKE '${req.query[key]}' `;			// Like used for case-insensitivity
+			i++;
+		}
+	}
+
+	console.log(sql);
+	if (i > 1) {
+		con.query(sql, function (err, result) {
+		    if (err) throw err;
+		    if (result.length == 1) {
+			    console.log(result);
+				
+				// todo - send pat_id to record_chain and get back mrn
+				const mrn_found = result[0].mrn;
+
+				// check for file in folder and send it back.
+				const mrn_path = path.join(__dirname, dir_path, mrn_found+".xml");
+				try {
+					fs.statSync(mrn_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
+					res.sendFile(mrn_path);		// convenient method
+					console.log(`File: ${mrn_found+".xml"} found & send back successfully`);
+				}
+				catch (err) {
+					console.log('* Error in file lookup');
+					if (err.code === 'ENOENT')
+						res.status(404).send(`File: ${mrn_found+".xml"} does not exist in CCDA Store`);		// 404 : Not FOund
+					else
+						res.status(400).send(err);			// 400: Bad Request
+				}
+		    } else if (result.length == 0)
+				res.status(422).send("No patient found, enter valid data");		// 422: Unprocessable entity. The task of returning a file is unprocessable.
+			else if (result.length > 1)
+				res.status(422).send("Many patients found, enter more fields");
+	  	});
+	}
+	else
+		res.status(422).send("No fields entered");
+});
+
+// step 1: Accept file(along with metadata) from ehr
 // init for accepting post request
 const busboy = require('connect-busboy');	// middleware for form/file upload(multipart/form-data)
-const path = require('path');				// easy way to handle file paths
-const fs = require('fs');
 app.use(busboy());
 
 app.post('/api/documents', (req, res) => {
@@ -53,19 +147,18 @@ app.post('/api/documents', (req, res) => {
 		valid_metadata:false,
 		data_sent: false,
 	};
-	
+
 	// collect file
 	req.pipe(req.busboy);
 	req.busboy.on('file', function (fieldname, file, filename) {
 		flags.file_received = true;
-		complete_path = path.join(__dirname, dir_path, filename);
-		console.log(`Uploading: ${filename} to ${complete_path}`);
 
+		complete_path = path.join(__dirname, dir_path, filename);
 		fstream = fs.createWriteStream(complete_path);
 		file.pipe(fstream);
-		fstream.on('close', () => {    
-			console.log("Upload Finished of: " + filename); 
-			
+		fstream.on('close', () => {
+			console.log("Upload Finished of: " + filename);
+
 			res_obj.status = `file: ${filename}, was successfully stored`;
 			res_obj.data = readFileSync(complete_path);			// redundant, as a verification/ for debugging
 			flags.file_stored = true;
@@ -87,8 +180,21 @@ app.post('/api/documents', (req, res) => {
 			if ( flags.data_sent ) console.log("Data was sent from the 'file write callback'");
 
 			// renaming file: can be done after sending back the response, since it doesn't affect what we send back in the response
-			// todo - rename file with the mrn in metadata using fs.rename()
+			/**Renaming
+			 * Renames file after storing it, flags.file_stored is already set
+			 * Sets the name of the file as mrn from metadata
+			 */
+			const mrn_filename = path.join(__dirname, dir_path, metadata.mrn+'.xml');
+			fs.rename(complete_path, mrn_filename, (err) => {
+				if (err) {
+					console.log(err);
+				} else {
+					console.log(`File successfully renamed`);
+				}
+			});
+
 		});
+
 	});
 
 	// collect metadata - {pat_id, ehr_id, doc_id, mrn}
@@ -109,12 +215,12 @@ app.post('/api/documents', (req, res) => {
 		// repeated section - whichever happens last	// need to find a better way
 		[res_obj, flags, err_msg] = assignMetadata(res_obj, metadata, flags);
 		// res.json(res_obj);
-		flags = sendData(res, res_obj, flags, err_msg);				
+		flags = sendData(res, res_obj, flags, err_msg);
 		if ( flags.data_sent ) console.log("Data was sent from the 'finish event callback'");
 	});
 });
 
-app.listen(3000, () => console.log('Listening on port 3000...'));
+app.listen(port, () => console.log(`Listening on port ${port}...`));
 
 // Helper Methods
 function sendData(res, res_obj, flags, err_msg) {
@@ -166,23 +272,24 @@ function isMetadataValid(metadata) {
 	return [true];
 }
 
-function listFiles(dir, res) {
-	fs.readdir(dir, (err, files) => {
-		if ( err ) {
-			console.log('Error while reading files from directory');
-			// todo - throw exeception
-		} else {
-			// todo - logic to return on xml files
-			// return files;							// return from callback not possible!
-			res.send(files);
-		}
-	});
-}
-
 // reads complete file in memory - can be a problem for huge files.
 function readFileSync(path) {
-	var lines = require('fs').readFileSync(filename=path, 'utf-8')
+	let lines = require('fs').readFileSync(filename=path, 'utf-8')
     .split('\n')
 	.filter(Boolean);
 	return lines.join("\n");
 }
+
+// Using Sequelize ORM: Testing Mysql connection
+// const sequelize = new Sequelize('dummy_data', 'root', '', {
+// 	host: 'localhost',
+// 	dialect: 'mysql'
+// });
+
+// sequelize.authenticate()
+// 	.then(() => {
+//     	console.log('Connection has been established successfully.');
+// 	})
+//   	.catch(err => {
+//     	console.error('Unable to connect to the database:', err);
+//   	});

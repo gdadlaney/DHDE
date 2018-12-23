@@ -9,13 +9,18 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "dotenv": "^6.2.0",
     "nodemon": "^1.18.7"
   },
   "dependencies": {
     "connect-busboy": "0.0.2",
+    "ejs": "^2.6.1",
     "express": "^4.16.4",
     "joi": "^14.3.0",
+    "mysql": "^2.16.0",
+    "mysql2": "^1.6.4",
     "path": "^0.12.7",
-    "request": "^2.88.0"
+    "request": "^2.88.0",
+    "sequelize": "^4.42.0"
   }
 }
