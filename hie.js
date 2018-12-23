@@ -98,9 +98,9 @@ app.get('/api/documents?', (req, res) => {
 	console.log(sql);
 	if (i > 1) {
 		con.query(sql, function (err, result) {
-		    if (err) throw err;
-		    if (result.length == 1) {
-			    console.log(result);
+			if (err) throw err;
+			if (result.length == 1) {
+				console.log(result);
 				
 				// todo - send pat_id to record_chain and get back mrn
 				const mrn_found = result[0].mrn;
@@ -119,7 +119,7 @@ app.get('/api/documents?', (req, res) => {
 					else
 						res.status(400).send(err);			// 400: Bad Request
 				}
-		    } else if (result.length == 0)
+			} else if (result.length == 0)
 				res.status(422).send("No patient found, enter valid data");		// 422: Unprocessable entity. The task of returning a file is unprocessable.
 			else if (result.length > 1)
 				res.status(422).send("Many patients found, enter more fields");
@@ -191,8 +191,46 @@ app.post('/api/documents', (req, res) => {
 				} else {
 					console.log(`File successfully renamed`);
 				}
-			});
+			
+				// create block object - can promise be used here?
+				const block_data = preprocess(metadata, dir_path);
 
+				function preprocess(metadata, dir_path) {
+					let d = new Date();
+					let block_data = {
+						mrn: metadata.mrn,
+						ehr_id: metadata.ehr_id,
+						doc_id: metadata.doc_id,
+					};
+					block_data.pat_id = metadata.ehr_id+""+metadata.pat_id;
+					block_data.timestamp = d;
+					block_data.hash = computeFileHash(block_data.mrn, dir_path);
+				
+					return block_data;		// synchronously calculated data
+				}
+				
+				function computeFileHash(file_name, dir_path) {
+					let fs = require('fs');
+					let crypto = require('crypto');
+					// the file you want to get the hash   
+					let file_path = path.join(__dirname, dir_path, file_name+".xml");
+					let fd = fs.createReadStream(file_path);
+					let hash = crypto.createHash('sha256');
+					hash.setEncoding('hex');
+					console.log(`Computing hash of ${file_path}`);
+				
+					fd.on('end', function() {
+						hash.end();
+						const computed_hash = hash.read();
+						block_data.hash = computed_hash
+						console.log(`Hash of file is: ${computed_hash}`);
+						console.log(block_data);
+					});
+				
+					// read all file and pipe it (write it) to the hash object
+					fd.pipe(hash);
+				}
+			});
 		});
 
 	});
@@ -275,7 +313,7 @@ function isMetadataValid(metadata) {
 // reads complete file in memory - can be a problem for huge files.
 function readFileSync(path) {
 	let lines = require('fs').readFileSync(filename=path, 'utf-8')
-    .split('\n')
+	.split('\n')
 	.filter(Boolean);
 	return lines.join("\n");
 }
