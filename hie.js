@@ -12,14 +12,62 @@ const {
 	sql_pass, 
 	sql_db,
 } = require('./config');		//environment variables
+const request = require('request');
 
-app.set('view engine', 'ejs');
 app.get('/', (req, res) => {
-	// res.send("Send a GET or POST request to '/api/documents'"+sql_user+sql_db);
-	res.render('empi');
+	res.send("Send a GET or POST request to '/api/documents'");
 });
 
-console.log(sql_user);
+app.set('view engine', 'ejs');
+app.get('/requestCCDA?', (req, res) => {
+	// if no query params, then show form
+	if ( Object.keys(req.query).length === 0 ) {
+		res.render('requestCCDA');
+	} else {
+		// code copied, refactor into functions
+		let url = `http://localhost:${port}/api/documents`;
+		const dir_path = './ehr_dir/mrn_cache'			// name of directory to store the files in 
+		let get_url = url+'?';
+		const requested_mrn= '123';
+
+		let i = 1;
+		for (const key in req.query) {
+			if (req.query[key].length) {
+				if (i != 1) {
+					get_url += "&"
+				}
+				get_url += `${key}=${req.query[key]}`;
+				i++;
+			}
+		}
+		console.log(get_url);
+
+		request.get(get_url, function(err, resp, body) {
+			if (err) {
+				console.log(`Error: ${err}`);
+				res.send(`Error: ${err}`);
+			} else {
+				if (resp.statusCode == 404 || resp.statusCode == 400) {
+					console.log(body);
+					res.send(body);
+				}
+				else {
+					fs.writeFile(path.join(__dirname, dir_path, requested_mrn+'.xml'), body, function(err, data) {
+						if (err) {
+							console.log(err);
+							res.send(err);
+						} else {
+							console.log("Successfully recieved requested data");
+							console.log(body);
+							res.send(body);
+						}
+					});
+				}
+			}
+		});
+	}
+});
+
 // Creation of EMPI
 const con = mysql.createConnection({
 	host: "localhost",
@@ -77,6 +125,8 @@ app.get('/api/documents?', (req, res) => {
 				res.status(422).send("Many patients found, enter more fields");
 	  	});
 	}
+	else
+		res.status(422).send("No fields entered");
 });
 
 // step 1: Accept file(along with metadata) from ehr
