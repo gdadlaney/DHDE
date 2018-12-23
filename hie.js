@@ -13,8 +13,10 @@ const {
 	sql_db,
 } = require('./config');		//environment variables
 
+app.set('view engine', 'ejs');
 app.get('/', (req, res) => {
-	res.send("Send a GET or POST request to '/api/documents'"+sql_user+sql_db);
+	// res.send("Send a GET or POST request to '/api/documents'"+sql_user+sql_db);
+	res.render('empi');
 });
 
 console.log(sql_user);
@@ -36,42 +38,45 @@ app.get('/api/documents?', (req, res) => {
 	let sql = "SELECT * FROM `patients` WHERE ";
 	let i = 1;
 	for (const key in req.query) {
-		sql += `${key} LIKE '${req.query[key]}' `;			// Like used for case-insensitivity
-		if (Object.keys(req.query).length > 1 && i != Object.keys(req.query).length) {
-			sql += "AND "
+		if (req.query[key].length) {
+			if (i != 1) {
+				sql += "AND "
+			}
+			sql += `${key} LIKE '${req.query[key]}' `;			// Like used for case-insensitivity
+			i++;
 		}
-		i++;
 	}
 
 	console.log(sql);
-	
-	con.query(sql, function (err, result) {
-	    if (err) throw err;
-	    if (result.length == 1) {
-		    console.log(result);
-			
-			// todo - send pat_id to record_chain and get back mrn
-			const mrn_found = result[0].mrn;
+	if (i > 1) {
+		con.query(sql, function (err, result) {
+		    if (err) throw err;
+		    if (result.length == 1) {
+			    console.log(result);
+				
+				// todo - send pat_id to record_chain and get back mrn
+				const mrn_found = result[0].mrn;
 
-			// check for file in folder and send it back.
-			const mrn_path = path.join(__dirname, dir_path, mrn_found+".xml");
-			try {
-				fs.statSync(mrn_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
-				res.sendFile(mrn_path);		// convenient method
-				console.log(`File: ${mrn_found+".xml"} found & send back successfully`);
-			}
-			catch (err) {
-				console.log('* Error in file lookup');
-				if (err.code === 'ENOENT')
-					res.status(404).send(`File: ${mrn_found+".xml"} does not exist in CCDA Store`);		// 404 : Not FOund
-				else
-					res.status(400).send(err);			// 400: Bad Request
-			}
-	    } else if (result.length == 0)
-			res.status(422).send("No patient found, enter valid data");		// 422: Unprocessable entity. The task of returning a file is unprocessable.
-		else if (result.length > 1)
-			res.status(422).send("Many patients found, enter more fields");
-  	});
+				// check for file in folder and send it back.
+				const mrn_path = path.join(__dirname, dir_path, mrn_found+".xml");
+				try {
+					fs.statSync(mrn_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
+					res.sendFile(mrn_path);		// convenient method
+					console.log(`File: ${mrn_found+".xml"} found & send back successfully`);
+				}
+				catch (err) {
+					console.log('* Error in file lookup');
+					if (err.code === 'ENOENT')
+						res.status(404).send(`File: ${mrn_found+".xml"} does not exist in CCDA Store`);		// 404 : Not FOund
+					else
+						res.status(400).send(err);			// 400: Bad Request
+				}
+		    } else if (result.length == 0)
+				res.status(422).send("No patient found, enter valid data");		// 422: Unprocessable entity. The task of returning a file is unprocessable.
+			else if (result.length > 1)
+				res.status(422).send("Many patients found, enter more fields");
+	  	});
+	}
 });
 
 // step 1: Accept file(along with metadata) from ehr
