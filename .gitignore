@@ -2,6 +2,7 @@
 temp/
 
 hie_dir/*
+ehr_dir/mrn_cache/*
 
 # Does not remain in sync between PCs + Increases modified lines count in commits
 package-lock.json		
