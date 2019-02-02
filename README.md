@@ -1,5 +1,5 @@
-# Data-Exchange-Platform
-A Healthcare Data Exchange Platform that enables exchange of CCDAs over EHRs using blockchains. Since, the data is exchanged in a decentralized way, any EHR from any location can join the exchange network.
+# Decentralized-Healthcare-Data-Exchange
+A Healthcare Data Exchange that enables exchange of patient health records, particularly CCDAs between EHRs using blockchain. Since, the data is exchanged in a decentralized way, any EHR from any location can join the exchange network. The system is designed to be a decentralized alternative to the centralized HIE system in the US.
 
 ### Steps to run the ehr-hie file upload
 1. Clone the repo(check git_instructions.md) & run `npm install` (only once) inside the dir.
