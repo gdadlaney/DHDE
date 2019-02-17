@@ -5,7 +5,7 @@ const mysql = require('mysql');
 const path = require('path');				// easy way to handle file paths
 const fs = require('fs');
 
-const dir_path = './hie_dir';			// name of directory to store the files in	////// rename hie_dir
+const dir_path = './hie_dir';			// name of directory to store the files in
 const {
 	HIE_IP,
 	port,
@@ -14,6 +14,7 @@ const {
 	sql_pass, 
 	sql_db,
 } = require('./config');		//environment variables
+
 const request = require('request');
 
 const BusinessNetworkConnection = require('composer-client').BusinessNetworkConnection;;
@@ -23,7 +24,7 @@ async function connect() {
 	if (businessNetworkDefinition == null) {
 		/////////////// also submit the Purge + SetupDemo transaction along with the connection
 		/////////////// needs another tansaction - SetupAsset
-		const cardname = 'admin@ccda-transfer';
+		const cardname = 'admin@ccda-network';
 		bizNetworkConnection = new BusinessNetworkConnection();
 		businessNetworkDefinition = await bizNetworkConnection.connect(cardname);
 	} else console.log("Already connected");
@@ -47,8 +48,8 @@ async function submitStartTransferTransaction(hash, owner_id) {
 		TransactionSubmit.handler(options);
 		console.log("after submission");
 	} catch (error) {
-		console.log('uh-oh', error);
-		// this.log.error(METHOD, 'uh-oh', error);
+		console.log(error);
+		this.log.error(METHOD, 'uh-oh', error);
 	}
 }
 
@@ -67,61 +68,39 @@ async function submitFinishTransferTransaction() {
 		TransactionSubmit.handler(options);
 		console.log("after submission");
 	} catch (error) {
-		console.log('uh-oh', error);
-		// this.log.error(METHOD, 'uh-oh', error);
+		console.log(error);
+		this.log.error(METHOD, 'uh-oh', error);
 	}
 
 	return true;	/////////
 }
 
-// async function getClinicId(target_id) {		// hash
-// 	await connect();
-
-// 	console.log('getClinicIdEntry');
-
-// 	let CCDA_Registry = await bizNetworkConnection.getAssetRegistry('org.transfer.CCDA');
-// 	// try {			// doesn't work as expected
-// 		let aResources = await CCDA_Registry.get(target_id);				////// need to handle error when Asset doesn't exist
-// 		let hash = aResources.hash;
-// 		let lastUpdate = aResources.lastUpdate;
-// 		let patient = aResources.patId.$idenifier;
-// 		let owner = aResources.ownerId.$identifier;
-
-// 		console.log(`Asset Lookup: ${hash}, ${lastUpdate}, ${patient}, ${owner}`);
-
-// 		return owner;
-// 	// } catch(err) {
-// 	// 	console.log("hi", err);
-// 	// 	return Promise.reject(err);
-// 	// }
-// }
-
-async function getAsset(pat_id) {		// hash
+async function getClinicId(target_id) {		// hash
 	await connect();
 
-	// console.log("****", pat_id);
-	let query = bizNetworkConnection.buildQuery(`SELECT org.transfer.CCDA WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
-	let assets = await bizNetworkConnection.query(query);
-	let max = assets[0];
-	for(let i=0;i<assets.length;i++) {
-		if(assets[i].lastUpdate>max.lastUpdate)
-		max = assets[i];
-	}
-	// console.log(max);
-	console.log("after query");
+	console.log('getClinicIdEntry');
 
-	const asset_obj = {
-		hash: max.hash,
-		ownerId: max.ownerId.$identifier,
-		patId: max.patId.$identifier,			// don't use this!!! - Relationship
-		lastUpdate: max.lastUpdate,
-	};
-	console.log("Asset fetched from blockchain: ", asset_obj);
+	console.log('123');
 
-	return asset_obj;
+	let CCDA_Registry = await bizNetworkConnection.getAssetRegistry('org.transfer.CCDA');
+	console.log('456');
+	// try {			// doesn't work as expected
+		let aResources = await CCDA_Registry.get(target_id);				////// need to handle error when Asset doesn't exist
+		let hash = aResources.hash;
+		let lastUpdate = aResources.lastUpdate;
+		let patient = aResources.patId.$idenifier;
+		let owner = aResources.ownerId.$identifier;
+
+		console.log(`Asset Lookup: ${hash}, ${lastUpdate}, ${patient}, ${owner}`);
+
+		return owner;
+	// } catch(err) {
+	// 	console.log("hi", err);
+	// 	return Promise.reject(err);
+	// }
 }
 
-async function requestCCDAtransfer(asset_obj)		//hash
+async function requestCCDAtransfer(target_id)		//hash
 {
 	const dir_path = './hie_dir';
 	const base_url = `http://127.0.0.2:${port}`;						///////globals
@@ -130,15 +109,11 @@ async function requestCCDAtransfer(asset_obj)		//hash
 	// looked up from EMPI
 	// const target_id = '123';		// id of file is its hash
 
-	console.log(`target_id: ${asset_obj.ownerId}`);
+	console.log(`target_id: ${target_id}`);
 
-	// old Arch
 	// lookup asset, get the owner of CCDA (identified by mrn)
-	// let target_hie = await getClinicId(target_id);
+	let target_hie = await getClinicId(target_id);
 	
-	const target_id = asset_obj.hash;
-	const target_hie = asset_obj.ownerId;
-
 	const url = base_url + `/${target_hie}/api/documents`;
 	const get_url = url + `?hash=${target_id}`;
 
@@ -162,26 +137,18 @@ async function requestCCDAtransfer(asset_obj)		//hash
 								console.log(err);
 							else {
 								console.log("Successfully recieved requested CCDA");
-								// console.log(body);
+								console.log(body);
 		
 								// hash check
 								console.log(`Requested hash: ${target_id}`);
-								computeFileHash(target_id+'.xml', dir_path)
-								.then( (received_file_hash) => {
-									console.log(`Recieved file hash: ${received_file_hash}`);
-									if ( target_id !== received_file_hash ) {
-										console.log("** Hashes of files do no match");
-										throw "Hashes of files do no match";
-									} else {
-										console.log('Hash verified');
-
-										// submit Final transaction
-										submitFinishTransferTransaction()
-										.then (
-											resolve(abs_path)
-										);
-									}
-								});
+								console.log(`Recieved file hash: ...`);
+								console.log('Hash verified');
+		
+								// submit Final transaction
+								submitFinishTransferTransaction()
+								.then (
+									resolve(abs_path)
+								);
 							}
 						});
 					}
@@ -191,19 +158,11 @@ async function requestCCDAtransfer(asset_obj)		//hash
 
 	}
 	
-	console.log("****", get_url);
 	const file_name = await asyncGet(get_url);
 	console.log("*** async returned filename: "+file_name);
 
 	return file_name;
 }
-
-// check for security
-// app.get('/static?', (req, res) => {
-// 	console.log(req.query['name']);
-// });
-
-app.use('/static', express.static('static'));
 
 // send file back, given identification information
 app.get('/api/documents?', (req, res) => {
@@ -226,43 +185,32 @@ app.get('/api/documents?', (req, res) => {
 			else if (result.length == 1) {
 				console.log(result);
 				
-				// old todo - send pat_id to record_chain and get back mrn
-				const pat_id_found = result[0].Id;			/////////
+				// todo - send pat_id to record_chain and get back mrn
+				const mrn_found = result[0].hash;			/////////
 
-				/// getObjectFromBlockhain
-				getAsset(pat_id_found)
-				.then( (asset_obj) => {
-					// check for file in folder and send it back.
-					const hash_found = asset_obj.hash;
-
-					const hash_path = path.join(__dirname, dir_path, hash_found+".xml");
-					try {
-						fs.statSync(hash_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
-						const options = { headers: { 'Content-Type': 'text/xml' } };
-						res.sendFile(hash_path, options);		// convenient method
-						console.log(`File: ${hash_found+".xml"} found & send back successfully from ccda_cache`);
-					}
-					catch (err) {
-						// console.log('* Error in file lookup');
-						if (err.code === 'ENOENT') {
-							// check in the blockchain
-							requestCCDAtransfer(asset_obj)
-							.then( (file_path) => {						/////// this won't work
-								if (file_path != null) {
-									// res.json({Status: `File: ${hash_found+".xml"} was found `});
-									res.sendFile(file_path);		// convenient method
-									console.log(`File: ${hash_found+".xml"} received & send back successfully from blockchain`);
-								}
-								else
-									res.status(404).send(`File: ${hash_found+".xml"} does not exist in CCDA Store or on the blockchain`);		// 404 : Not FOund
-							});
-						} else
-							res.status(400).send(err);			// 400: Bad Request
-					}
-					// finally - hash check + finalTransfer Transaction - use flags
-				})
-				.catch( (err) => console.log("Some err in blockchain query: ", err) );
-
+				// check for file in folder and send it back.
+				const mrn_path = path.join(__dirname, dir_path, mrn_found+".xml");
+				try {
+					fs.statSync(mrn_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
+					res.sendFile(mrn_path);		// convenient method
+					console.log(`File: ${mrn_found+".xml"} found & send back successfully`);
+				}
+				catch (err) {
+					console.log('* Error in file lookup');
+					if (err.code === 'ENOENT') {
+						// check in the blockchain	////////////////////////
+						requestCCDAtransfer(mrn_found)
+						.then( (file_path) => {
+							if (file_path != null) {
+								res.sendFile(file_path);		// convenient method
+								console.log(`File: ${mrn_found+".xml"} received from *Transfer* & send back successfully`);
+							}
+							else
+								res.status(404).send(`File: ${mrn_found+".xml"} does not exist in CCDA Store or on the blockchain`);		// 404 : Not FOund
+						});
+					} else
+						res.status(400).send(err);			// 400: Bad Request
+				}
 			} else if (result.length == 0)
 				res.status(422).send("No patient found, enter valid data");		// 422: Unprocessable entity. The task of returning a file is unprocessable.
 			else if (result.length > 1)
@@ -283,7 +231,7 @@ app.post('/api/documents', (req, res) => {
 
 	let complete_path;
 	let fstream;
-	let res_obj = { status: 'file upload failed'};					// initialization
+	let res_obj = { status: 'file upload failed', data: '' };					// initialization
 	let metadata = { pat_id:-1, ehr_id:-1, doc_id:-1, mrn:-1 };
 	let flags = {
 		file_received: false,
@@ -304,9 +252,9 @@ app.post('/api/documents', (req, res) => {
 			console.log("Upload Finished of: " + filename);
 
 			res_obj.status = `file: ${filename}, was successfully stored`;
-			// res_obj.data = readFileSync(complete_path);			// redundant, as a verification/ for debugging
+			res_obj.data = readFileSync(complete_path);			// redundant, as a verification/ for debugging
 			flags.file_stored = true;
-			// if ( flags.data_sent )	return;
+			if ( flags.data_sent )	return;
 
 			// todelete - Doesn't work, since the 'finish' event occurs after all the form-data parts(file & fields)
 			// have completed their callback. Handlers must be defined before the event occurs.
@@ -331,30 +279,28 @@ app.post('/api/documents', (req, res) => {
 
 			// create block object - can promise be used here?
 			console.log(filename);
-			preprocess(metadata, dir_path, filename)				/////////// async
-			.then( (block_data) => {
-				console.log(block_data);
+			const block_data = preprocess(metadata, dir_path, filename);				/////////// async
+			console.log(block_data);
 
-				const mrn_filename = path.join(__dirname, dir_path, block_data.hash+'.xml');
-				fs.rename(complete_path, mrn_filename, (err) => {
-					if (err) {
-						console.log(err);
-					} else {
-						console.log(`File successfully renamed`);
-					}
-					
+			const mrn_filename = path.join(__dirname, dir_path, block_data.hash+'.xml');
+			fs.rename(complete_path, mrn_filename, (err) => {
+				if (err) {
+					console.log(err);
+				} else {
+					console.log(`File successfully renamed`);
+				}
+				
 
-					AddCCDA(block_data)
-					.then( (value) => {
-						console.log(value);
+				AddCCDA(block_data)
+				.then( (value) => {
+					console.log(value);
 
-						sendDataNoMetadata(res, res_obj);
-						// console.log("Data was sent from the 'file write callback'");
-						console.log("File succesfully stored & logged on the blockchain");
-					})
-					.catch( (err) => console.log(err) );
-			});
-			
+					sendDataNoMetadata(res, res_obj);
+					// console.log("Data was sent from the 'file write callback'");
+					console.log("File suceesfully stored & logged on the blockchain");
+				})
+				.catch( (err) => console.log(err) );
+
 
 			});
 		});
@@ -391,32 +337,21 @@ async function AddCCDA(block_data)
 	await connect();
 
 	try {
+		await this.initFunc();
 		let hash = block_data.hash;
 		let patId = block_data.pat_id;
 		let clinicId = block_data.clinic_id;
-		let factory = businessNetworkDefinition.getFactory();
+		let factory = this.businessNetworkDefinition.getFactory();
 		
-		let CCDA_Registry = await bizNetworkConnection.getAssetRegistry('org.transfer.CCDA');
-
-		// if asset exists, delete it			////// Just for the demo, don't deploy to production
-		
-		let assetExists = await CCDA_Registry.exists(hash);
-		if (assetExists) {
-			console.log("* Asset already exists, removing it");
-			await CCDA_Registry.remove(hash);
-		}
-		// doesn't work when Asset does not exist.
-
+		let CCDA_Registry = await this.bizNetworkConnection.getAssetRegistry('org.transfer.CCDA');
 		let newCCDA = factory.newResource('org.transfer', 'CCDA', hash);
 		newCCDA.patId = factory.newRelationship('org.transfer', 'Patient', patId);
 		newCCDA.ownerId = factory.newRelationship('org.transfer', 'Clinic', clinicId);
 		newCCDA.lastUpdate = new Date();
 		await CCDA_Registry.add(newCCDA);
-
-		return block_data;
 	} catch (error) {
-		console.log('* uh-oh', error);
-		// this.log.error(METHOD, 'uh-oh', error);
+		console.log(error);
+		this.log.error(METHOD, 'uh-oh', error);
 	}
 }
 
@@ -452,19 +387,15 @@ app.get('/', (req, res) => {
 
 app.set('view engine', 'ejs');
 app.get('/requestCCDA?', (req, res) => {
-	// if no query params, then display the form
+	// if no query params, then show form
 	if ( Object.keys(req.query).length === 0 ) {
-		// Dynamic IP in the ejs template -
-		// if HIE_IP is 127.x.x.x then send that IP, 
-		// else if it is 0.0.0.0 then send the IP from the DNS - 192.168.31.131
 		res.render('requestCCDA');
 	} else {
-		// Fetching form data from get request
 		// code copied, refactor into functions
 		let url = `http://${HIE_IP}:${port}/api/documents`;
 		const dir_path = './ehr_dir/mrn_cache'			// name of directory to store the files in 
 		let get_url = url+'?';
-		const requested_mrn = '123';				/////////
+		const requested_mrn= '123';
 
 		let i = 1;
 		for (const key in req.query) {
@@ -484,32 +415,18 @@ app.get('/requestCCDA?', (req, res) => {
 				res.send(`Error: ${err}`);
 			} else {
 				if (resp.statusCode == 404 || resp.statusCode == 400) {
-					console.log(`${resp.statusCode}: ${err}`);
-					res.send(`${resp.statusCode}: ${err}`);
+					console.log(body);
+					res.send(body);
 				}
 				else {
-					// name of file = name of patient
-					// Hence fetching name from the document
-					const parser = require('xml2json');
-					const options = { object: true };
-					// console.log(typeof body);		// string, not file descriptor
-					const json = parser.toJson(body, options);
-					const patInfo = json.ClinicalDocument.recordTarget.patientRole;
-					const pat_name_obj = patInfo.patient.name;
-					const pat_name = pat_name_obj.given + pat_name_obj.family;
-					console.log(pat_name);
-
-					const abs_path = path.join(__dirname, dir_path, pat_name+'.xml');
-					fs.writeFile(abs_path, body, function(err, data) {
+					fs.writeFile(path.join(__dirname, dir_path, requested_mrn+'.xml'), body, function(err, data) {
 						if (err) {
 							console.log(err);
 							res.send(err);
 						} else {
-							console.log(`Successfully recieved requested data & wrote file: ${pat_name}.xml to disk`);
-							// console.log(body);
-							// res.send(body);						///////////// xml
-							const options = {}; // = { headers: { 'Content-Type': 'text/xml' } };
-							res.sendFile(abs_path, options);		// convenient method
+							console.log("Successfully recieved requested data");
+							console.log(body);
+							res.send(body);
 						}
 					});
 				}
@@ -536,12 +453,12 @@ con.connect(function(err) {
 const http = require('http');
 const server = http.createServer(app);
 server.listen(port, HIE_IP, () => console.log(`${CLINIC_ID} is listening on ${HIE_IP}:${port} ...`));
-// server.listen(port, '0.0.0.0', () => console.log(`${CLINIC_ID} is listening on ${HIE_IP}:${port} ...`));
 
 // Helper Methods
 function sendDataNoMetadata(res, res_obj) {
 	console.log("Response sent.");
 	res.json(res_obj);
+	flags.data_sent = true;
 }
 
 function sendData(res, res_obj, flags, err_msg) {
@@ -561,10 +478,8 @@ function sendData(res, res_obj, flags, err_msg) {
 	return flags;
 }
 
-async function preprocess(metadata, dir_path, file_name) {
+function preprocess(metadata, dir_path, file_name) {
 	// let d = new Date();
-	const parser = require('xml2json');
-	
 	let block_data = {
 		// mrn: metadata.mrn,
 		// ehr_id: metadata.ehr_id,
@@ -572,119 +487,64 @@ async function preprocess(metadata, dir_path, file_name) {
 	};
 	// block_data.pat_id = metadata.ehr_id+""+metadata.pat_id;
 	// block_data.timestamp = d;
-	block_data.hash = await computeFileHash(file_name, dir_path);
-
-	// const asyncFileHash = (file_name, dir_path) => {
-	// 	return new Promise((resolve, reject) => {
-	// 		computeFileHash(file_name, dir_path)
-	// 		.then( (hash) => {
-	// 			// block_data.hash = hash;
-	// 			console.log("In then...", hash);
-	// 			resolve(hash);
-	// 		});
-	// 	});
-	// }
-
-	// block_data.hash = await asyncFileHash(file_name, dir_path);
-	// console.log("After computeFileHash, block_data is: ", block_data);
+	block_data.hash = computeFileHash(file_name, dir_path);
+	const parser = require('xml2json');
 
 	// path.join(dir_path, `/hie_dir/${file_name}`)
-	const asyncGetXmlData = () => {
-		return new Promise((resolve, reject) => {
-			fs.readFile( path.join(dir_path, `${file_name}`), function(err, data) {
-				if (err) {
-					console.log("*********** Err!!!");
-					reject(err);
-				} else {
-					const options = {
-						object: true,
-					}
-					
-					console.log("Data read from the CCDA is:");
+	fs.readFile( path.join(dir_path, `/hie_dir/${file_name}`), function(err, data) {
+		const options = {
+			object: true,
+		}
+		
+		const json = parser.toJson(data,options);
+		// console.log("to json ->", json);
+		const patInfo = json.ClinicalDocument.recordTarget.patientRole;
+		console.log("Given Name: "+patInfo.patient.name.given);
+		console.log("Family Name: "+json.ClinicalDocument.recordTarget.patientRole.patient.name.family);
+		console.log("Patient Id: "+json.ClinicalDocument.recordTarget.patientRole.id.root);
+		console.log("Clinic Name: "+json.ClinicalDocument.recordTarget.patientRole.providerOrganization.name);
+		console.log("Clinic Id: "+json.ClinicalDocument.recordTarget.patientRole.providerOrganization.id.root);
 
-					const json = parser.toJson(data,options);
-					const patInfo = json.ClinicalDocument.recordTarget.patientRole;
-					console.log("Given Name: "+patInfo.patient.name.given);
-					console.log("Family Name: "+json.ClinicalDocument.recordTarget.patientRole.patient.name.family);
-					console.log("Patient Id: "+json.ClinicalDocument.recordTarget.patientRole.id.root);
-					console.log("Clinic Name: "+json.ClinicalDocument.recordTarget.patientRole.providerOrganization.name);
-					console.log("Clinic Id: "+json.ClinicalDocument.recordTarget.patientRole.providerOrganization.id.root);
-	
-					const ret_obj = {
-						clinic_id: patInfo.providerOrganization.id.root,
-						pat_id: patInfo.id.root,
-					}
-	
-					resolve(ret_obj);
-				}
-			});
-		});
-	}
-
-	const ret_obj = await asyncGetXmlData();			//// use object destructuring
-	block_data.clinic_id = ret_obj.clinic_id;
-	block_data.pat_id = ret_obj.pat_id;
+		block_data.clinic_id = patInfo.providerOrganization.id.root;
+		block_data.pat_id = patInfo.id.root;
+	});
 
 	return block_data;		// synchronously calculated data
 }
 
-// function computeFileHash(file_name, dir_path) {
-// 	const Crypto = require('crypto-js');
-
-// 	// const hash = Crypto.SHA256(fs.readFileSync(path.join(dir_path, file_name)).toString());
-// 	const hash = "b9829caed3df8290976a6102a3664f3659934ce7b4ec03e4d39328700b6df36c";
-// 	console.log("Computed hash is: ", hash);
-
-// 	return hash;
-// }
-
-async function computeFileHash(file_name, dir_path) {
-	const crypto = require('crypto');
-	const Q = require('q');
-
-	const deferred = Q.defer();
-
+function computeFileHash(file_name, dir_path) {
+	let fs = require('fs');
+	let crypto = require('crypto');
 	// the file you want to get the hash   
-	const file_path = path.join(__dirname, dir_path, file_name);
+	let file_path = path.join(__dirname, dir_path, file_name);
 	let fd = fs.createReadStream(file_path);
 	let hash = crypto.createHash('sha256');
 	hash.setEncoding('hex');
 	console.log(`Computing hash of ${file_path}`);
 
-	// const asyncGetHash = () => {
-	// 	return new Promise((resolve, reject) => {
-	// 		fd.on('end', function() {
-	// 			hash.end();
-	// 			const computed_hash = hash.read();
-	// 			// block_data.hash = computed_hash
-	// 			console.log(`Hash of file is: ${computed_hash}`);
+	const asyncGetHash = () => {
+		return new Promise((resolve, reject) => {
+			fd.on('end', function() {
+				hash.end();
+				const computed_hash = hash.read();
+				// block_data.hash = computed_hash
+				console.log(`Hash of file is: ${computed_hash}`);
 				
-	// 			resolve(computed_hash);
-	// 		});
-	// 	});
-	// }
-	// console.log("*****", '0000000000');
-	// const computed_hash = await asyncGetHash();
-	// // const computed_hash = '26eded583f2d20275cf355707ef371282be76959d6a85a6e4e23ed2f72f4cbc1';
-	// console.log("*****", computed_hash);
-	// // read all file and pipe it (write it) to the hash object
-	// fd.pipe(hash);
+				resolve(computed_hash);
+			});
+		});
+	}
 	
-	// return computed_hash;
 
-	fd.on('end', function() {
-		hash.end();
-		const computed_hash = hash.read()
-		console.log('Hash of file is.. ', computed_hash); 
-        deferred.resolve(computed_hash);
-	});
-
-	fd.pipe(hash);			// imp
-
-	return deferred.promise;
+	asyncGetHash()
+	.then ( (hash) => {
+		block_data.hash = hash;
+		console.log("*****", block_data);
+		// read all file and pipe it (write it) to the hash object
+		fd.pipe(hash);
+	} )
+	
 }
-
-
 
 function assignMetadata(res_obj, metadata, flags) {		// assigns metadata if not already assigned
 	let valid_flag, err_msg;

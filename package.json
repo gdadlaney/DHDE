@@ -13,14 +13,19 @@
     "nodemon": "^1.18.7"
   },
   "dependencies": {
+    "composer-client": "^0.20.4",
     "connect-busboy": "0.0.2",
+    "crypto-js": "^3.1.9-1",
     "ejs": "^2.6.1",
     "express": "^4.16.4",
     "joi": "^14.3.0",
     "mysql": "^2.16.0",
     "mysql2": "^1.6.4",
     "path": "^0.12.7",
+    "q": "^1.5.1",
+    "readline-sync": "^1.4.9",
     "request": "^2.88.0",
-    "sequelize": "^4.42.0"
+    "sequelize": "^4.42.0",
+    "xml2json": "^0.11.2"
   }
 }
