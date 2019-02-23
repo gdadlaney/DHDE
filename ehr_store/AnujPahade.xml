@@ -1,8 +1,5 @@
 <?xml version="1.0"?>
-<!-- <?xml-stylesheet type="text/xsl" href="CCDA.xsl"?> -->
-<!-- <?xml-stylesheet type="text/xsl" href="localhost:3001/static/CCDA.xsl"?> -->
-<!-- <?xml-stylesheet type="text/xsl" href="127.0.0.1:3001/static/CCDA.xsl"?> -->
-<?xml-stylesheet type="text/xsl" href="static/CCDA.xsl"?>
+<?xml-stylesheet type="text/xsl" href="CDA.xsl"?>
 <ClinicalDocument xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" moodCode="EVN" xmlns="urn:hl7-org:v3" xmlns:sdtc="urn:hl7-org:sdtc">
   <realmCode code="US" />
   <typeId root="2.16.840.1.113883.1.3" extension="POCD_HD000040" />
@@ -12,13 +9,13 @@
   <templateId root="2.16.840.1.113883.10.20.22.1.2" />
   <id root="1dd4abd6-1b24-4785-89e6-24f18775d582" extension="fe31693e-3b08-43cc-8625-6bdf90ff2784" assigningAuthorityName="Drummond Group Inc" />
   <code code="34133-9" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Summarization of Episode Note" />
-  <title>Hamilton, Adam : Health Summary</title>
+  <title>Pahade ,Anuj : Health Summary</title>
   <effectiveTime value="20190204202601" />
   <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25" />
   <languageCode code="en-US" />
   <recordTarget>
     <patientRole>
-      <id root="AH19" extension="PH105585" />
+      <id root="AP49" extension="PH105585" />
       <addr use="HP">
         <streetAddressLine>4878 Harber Ramp Stravenue</streetAddressLine>
         <city>Bartonton</city>
@@ -27,8 +24,8 @@
       </addr>
       <patient>
         <name use="L">
-          <given>Adam</given>
-          <family>Hamilton</family>
+          <given>Anuj</given>
+          <family>Pahade</family>
         </name>
         <administrativeGenderCode code="M" codeSystem="2.16.840.1.113883.5.1" codeSystemName="AdministrativeGender" displayName="Male" />
         <birthTime value="19780528" />
@@ -40,8 +37,8 @@
         </languageCommunication>
       </patient>
       <providerOrganization classCode="ORG" determinerCode="INSTANCE">
-        <id root="PHO" />
-        <name>Poona Hospital</name>
+        <id root="SHO" />
+        <name>Sasoon Hospital</name>
         <telecom value="tel:(919)650-2819" use="WP" />
         <addr>
           <streetAddressLine>15200 Weston Parkway</streetAddressLine>

@@ -8,4 +8,14 @@ A Healthcare Data Exchange that enables exchange of patient health records, part
 4. Run `node dummy\ ehr.js` to start transfer of the sample.xml file.
 5. Check the console logs and hie_dir/ to see the result.
 
+
+
+ccda_store has ccda files created by the clinic
+ccda_cache has ccda files requested by the clinic
+ehr_store has ccda files created by the ehr software. files from this folder will be uploaded to ccda_store on UploadFile
+
+
+
+
+
 #### Please read the contributing.md file before making any contribution.

@@ -6,13 +6,10 @@ const readlineSync = require('readline-sync');
 const {
 	port,
 	ehr_id,
-	HIE_IP,
+	CLINIC_IP,
 } = require('./config'); //environment variables
-const url = `http://${HIE_IP}:${port}/api/documents`;
+const url = `http://${CLINIC_IP}:${port}/api/documents`;
 
-// tried using a while loop for continuous input
-// unexpected behaviour observed
-// need to look into it
 
 const answer = readlineSync.question("1. Upload file\n2. Request file\n3. Exit\nEnter choice: ");
 
@@ -20,7 +17,7 @@ if (answer == 1) {
 	// step 1: make a POST request to hie.js using request module
 
 	const filename = readlineSync.question("Enter name of the file to upload: ");
-	const filepath = `./ehr_dir/${filename}`;
+	const filepath = `./ehr_store/${filename}`;
 
 	let req = request.post(url, function handleResponse(err, resp, body) {
 		if (err) {
@@ -49,7 +46,7 @@ if (answer == 1) {
 	// We don't need to submit the form manually.
 	// Items can be added until the request is fired on the next cycle of the event-loop
 } else if (answer == 2) {
-	const dir_path = './ehr_dir/mrn_cache'			// name of directory to store the files in 
+	const dir_path = './ccda_cache'			// name of directory to store the files in 
 	const requested_mrn = '123';
 	const get_url = url + '?name=Adam+Hamilton&country=US';
 

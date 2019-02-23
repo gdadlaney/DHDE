@@ -14,4 +14,6 @@ module.exports = {
 	sql_pass: process.env.PASSWORD,
 	sql_db: process.env.DATABASE,	
 	//readable_variable_name: process.env.env_variable_name
+
+	
 }
