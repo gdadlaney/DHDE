@@ -46,16 +46,19 @@ let res_obj = { status: 'file upload failed' };
 app.get('/api/documents', handleCCDARequest);
 
 async function handleCCDARequest(req, res) {
-	// get metadata to identify the CCDA
+	// 1. Get metadata to identify the CCDA
 	console.log(ls.info,"Fetching patient_id from EMPI");
 	let pat_id = await createEMPIQuery(req, res);
 	console.log(ls.info,"Patient id is :"+pat_id);
 
 	console.log(ls.info,"Fetching the latest CCDA of "+pat_id+" from the blockchain");
-	let latest_CCDA_obj = await getLatestCCDA(pat_id);
+	let latest_CCDA_obj = await getLatestCCDA(pat_id);						// try-catch may be better 
+	if (latest_CCDA_obj === null) {
+		res.status(404).send("No records found on the blockchain for the given patient");
+		return;
+	}
 
-
-	// get the CCDA
+	// 2. Get the CCDA
 	console.log(ls.info,"Checking if CCDA exists locally");
 	let abs_file_path = searchInLocal(latest_CCDA_obj);
 	if (abs_file_path === null) {
@@ -296,9 +299,11 @@ async function getLatestCCDA(pat_id) {
 	// wrap query in try catch
 	let assets = await bizNetworkConnection.query(query);
 
-	// if query returns 0 items
-	// console.log("CCDA not found in blockchain");
-	// res.status(404).send("No records found on the blockchain for the given patient");
+	
+	if (assets.length == 0) {
+		console.log(ls.error, "CCDA not found in blockchain");
+		return null;
+	}
 
 	// Latest CCDA
 	let max = assets[0];

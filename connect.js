@@ -8,8 +8,9 @@ async function connect() {
 		const cardname = 'admin@ccda-transfer';
 		bizNetworkConnection = await new BusinessNetworkConnection();
         businessNetworkDefinition = await bizNetworkConnection.connect(cardname);
-        return {bizNetworkConnection,businessNetworkDefinition};
 	} else console.log("Already connected");
+
+	return {bizNetworkConnection,businessNetworkDefinition};
 }
 
 module.exports = {
