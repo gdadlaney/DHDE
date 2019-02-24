@@ -6,6 +6,7 @@ dotenv.config(); //read the .env file and set all environment variables
 module.exports = {
 	HIE_IP: process.env.HIE_IP,
 	port: process.env.PORT,
+	EHR_PORT: process.env.EHR_PORT,
 	CLINIC_ID: process.env.CLINIC_ID,
 	ehr_id: process.env.EHR_ID,
 	
