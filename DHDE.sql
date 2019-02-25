@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: localhost
--- Generation Time: Feb 20, 2019 at 05:24 PM
+-- Generation Time: Feb 25, 2019 at 02:58 PM
 -- Server version: 5.7.25-0ubuntu0.16.04.2
 -- PHP Version: 7.0.33-0ubuntu0.16.04.1
 
@@ -37,7 +37,9 @@ CREATE TABLE `DNS` (
 --
 
 INSERT INTO `DNS` (`Clinic_Id`, `Clinic_IP`, `Clinic_Name`) VALUES
+('CHO', '127.0.0.3', 'Care Hospital'),
 ('PHO', '127.0.0.2', 'Poona Hospital'),
+('RNH', '127.0.0.4', 'Rao Nursing Home'),
 ('SHO', '127.0.0.1', 'Sasoon Hospital');
 
 -- --------------------------------------------------------

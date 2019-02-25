@@ -131,8 +131,12 @@ async function getFile(target_hash, target_clinic) {
 	 * This will be used to construct base_url
 	 * For now assume that the IP of target clinic is 127.0.0.2
 	 */
+	const { con } =  await mysql_connect();
+	 sql = `SELECT * from DNS WHERE Clinic_Id='${target_clinic}';`;
+	let [rows, fields] = await con.execute(sql);
+	let target_clinic_ip = rows[0].Clinic_IP;
 
-	const base_url = `http://127.0.0.2:${port}`;
+	const base_url = `http://${target_clinic_ip}:${port}`;
 
 	const url = base_url + `/${target_clinic}/api/documents/`;
 	const get_url = url + `?hash=${target_hash}`;				// use route params instead of query params
