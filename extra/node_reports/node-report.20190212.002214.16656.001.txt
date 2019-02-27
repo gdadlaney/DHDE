@@ -1,0 +1,231 @@
+================================================================================
+==== Node Report ===============================================================
+
+Event: SIGUSR2, location: "SignalDumpAsyncCallback"
+Filename: node-report.20190212.002214.16656.001.txt
+Dump event time:  2019/02/12 00:22:14
+Module load time: 2019/02/12 00:16:30
+Process ID: 16656
+Command line: /home/gaurav/.nvm/versions/node/v8.9.4/bin/node hie_requester.js 
+
+Node.js version: v8.9.4
+(http_parser: 2.7.0, v8: 6.1.534.50, uv: 1.15.0, zlib: 1.2.11, ares: 1.10.1-DEV,
+ modules: 57, nghttp2: 1.25.0, openssl: 1.0.2n, icu: 59.1, unicode: 9.0,
+ cldr: 31.0.1, tz: 2017b)
+
+node-report version: 2.2.1 (built against Node.js v8.9.4, glibc 2.23, 64 bit)
+
+OS version: Linux 4.15.0-43-generic #46~16.04.1-Ubuntu SMP Fri Dec 7 13:31:08 UTC 2018
+(glibc: 2.23)
+
+Machine: gaurav-Lenovo-Y520-15IKBN x86_64
+
+================================================================================
+==== JavaScript Stack Trace ====================================================
+
+JavaScript VM state: EXTERNAL
+
+Signal received when event loop idle, no stack trace available
+
+================================================================================
+==== Native Stack Trace ========================================================
+
+ 0: [pc=0x7f4efd2cd470]  [/home/gaurav/.nvm/versions/node/v8.9.4/lib/node_modules/composer-cli/node_modules/node-report/api.node]
+ 1: [pc=0x143e44b]  [/home/gaurav/.nvm/versions/node/v8.9.4/bin/node]
+ 2: [pc=0x144ffa8]  [/home/gaurav/.nvm/versions/node/v8.9.4/bin/node]
+ 3: [pc=0x143edd6] uv_run [/home/gaurav/.nvm/versions/node/v8.9.4/bin/node]
+ 4: [pc=0x122c1bd] node::Start(uv_loop_s*, int, char const* const*, int, char const* const*) [/home/gaurav/.nvm/versions/node/v8.9.4/bin/node]
+ 5: [pc=0x1224d03] node::Start(int, char**) [/home/gaurav/.nvm/versions/node/v8.9.4/bin/node]
+ 6: [pc=0x7f4f0e299830] __libc_start_main [/lib/x86_64-linux-gnu/libc.so.6]
+ 7: [pc=0x8aee41]  [/home/gaurav/.nvm/versions/node/v8.9.4/bin/node]
+
+================================================================================
+==== JavaScript Heap and Garbage Collector =====================================
+
+Heap space name: new_space
+    Memory size: 1,048,576 bytes, committed memory: 1,048,440 bytes
+    Capacity: 1,031,168 bytes, used: 460,264 bytes, available: 570,904 bytes
+Heap space name: old_space
+    Memory size: 71,651,328 bytes, committed memory: 71,374,536 bytes
+    Capacity: 70,418,504 bytes, used: 66,427,160 bytes, available: 3,991,344 bytes
+Heap space name: code_space
+    Memory size: 2,621,440 bytes, committed memory: 2,226,592 bytes
+    Capacity: 2,504,992 bytes, used: 1,952,000 bytes, available: 552,992 bytes
+Heap space name: map_space
+    Memory size: 6,311,936 bytes, committed memory: 5,905,928 bytes
+    Capacity: 6,198,784 bytes, used: 2,277,616 bytes, available: 3,921,168 bytes
+Heap space name: large_object_space
+    Memory size: 5,107,712 bytes, committed memory: 5,107,712 bytes
+    Capacity: 1,417,746,920 bytes, used: 5,032,936 bytes, available: 1,412,713,984 bytes
+
+Total heap memory size: 86,740,992 bytes
+Total heap committed memory: 85,663,208 bytes
+Total used heap memory: 76,149,976 bytes
+Total available heap memory: 1,421,750,392 bytes
+
+Heap memory limit: 1,501,560,832
+
+================================================================================
+==== Resource Usage ============================================================
+
+Process total resource usage:
+  User mode CPU: 2.476942 secs
+  Kernel mode CPU: 0.120394 secs
+  Average CPU Consumption : 0.752851%
+  Maximum resident set size: 160,133,120 bytes
+  Page faults: 5 (I/O required) 79222 (no I/O required)
+  Filesystem activity: 1024 reads 80 writes
+
+Event loop thread resource usage:
+  User mode CPU: 2.126680 secs
+  Kernel mode CPU: 0.104722 secs
+  Average CPU Consumption : 0.646783%
+  Filesystem activity: 1024 reads 16 writes
+
+================================================================================
+==== Node.js libuv Handle Summary ==============================================
+
+(Flags: R=Ref, A=Active)
+Flags  Type      Address             Details
+[-A]   async     0x0000000003e478f0  
+[--]   check     0x00007ffdc7db45d0  
+[R-]   idle      0x00007ffdc7db4648  
+[--]   prepare   0x00007ffdc7db4758  
+[--]   check     0x00007ffdc7db47d0  
+[R-]   timer     0x00007ffdc7db46c0  repeat: 0, timeout expired: 11170323 ms ago
+[-A]   async     0x00000000021cf4c0  
+[R-]   timer     0x0000000003eb3360  repeat: 0, timeout expired: 11170326 ms ago
+[-A]   pipe      0x0000000003eb30e8  send buffer size: 212992, recv buffer size: 212992, file descriptor: 3, write queue size: 0, readable, writable
+[R-]   tty       0x0000000003ece6e8  width: 75, height: 44, file descriptor: 11, write queue size: 0, writable
+[-A]   signal    0x0000000003ecdfb0  signum: 28 (SIGWINCH)
+[R-]   tty       0x0000000003ee33c8  width: 75, height: 44, file descriptor: 12, write queue size: 0, writable
+[RA]   tcp       0x0000000003f2b688  localhost:52452 connected to localhost:3306, send buffer size: 2626560, recv buffer size: 1061808, file descriptor: 14, write queue size: 0, readable, writable
+[RA]   tcp       0x0000000003f30c88  localhost:3001 (not connected), send buffer size: 16384, recv buffer size: 87380, file descriptor: 13, write queue size: 0, readable, writable
+[R-]   timer     0x0000000003ecede0  repeat: 0, timeout expired: 341326 ms ago
+[-A]   async     0x00007f4efdff7a58  
+[R-]   timer     0x0000000003f30390  repeat: 0, timeout expired: 11170326 ms ago
+[RA]   prepare   0x00007f4efdff7980  
+[R-]   timer     0x0000000003f89860  repeat: 0, timeout expired: 11170326 ms ago
+[-A]   tcp       0x0000000003f2d930  localhost:37304 connected to localhost:7051, send buffer size: 2626560, recv buffer size: 1061808, file descriptor: 16, write queue size: 0, readable, writable
+[-A]   timer     0x0000000003f3ab90  repeat: 0, timeout in: 14103 ms
+[-A]   tcp       0x0000000003f3f520  localhost:37308 connected to localhost:7051, send buffer size: 2626560, recv buffer size: 1061808, file descriptor: 17, write queue size: 0, readable, writable
+[-A]   async     0x00007f4efd4d5cc0  
+[R-]   timer     0x0000000003ff4820  repeat: 0, timeout expired: 341326 ms ago
+[-A]   async     0x00007f4efd2bfa58  
+[R-]   timer     0x0000000004274c90  repeat: 0, timeout in: 54480578 ms
+[RA]   prepare   0x00007f4efd2bf980  
+[R-]   timer     0x0000000003f3e600  repeat: 0, timeout in: 140727945319290 ms
+[-A]   tcp       0x0000000003ff25e0  localhost:37322 connected to localhost:7051, send buffer size: 2626560, recv buffer size: 1061808, file descriptor: 19, write queue size: 0, readable, writable
+[-A]   tcp       0x0000000003eaf690  localhost:37326 connected to localhost:7051, send buffer size: 2626560, recv buffer size: 4716108, file descriptor: 20, write queue size: 0, readable, writable
+[-A]   timer     0x0000000003fb59d0  repeat: 0, timeout in: 16337 ms
+[-A]   tcp       0x0000000003f7cfa0  localhost:33390 connected to localhost:7050, send buffer size: 2626560, recv buffer size: 1061808, file descriptor: 15, write queue size: 0, readable, writable
+[-A]   timer     0x00000000041e9d60  repeat: 0, timeout in: 807 ms
+[-A]   timer     0x0000000003fb41d0  repeat: 0, timeout in: 3790 ms
+
+================================================================================
+==== System Information ========================================================
+
+Environment variables
+  XDG_SEAT_PATH=/org/freedesktop/DisplayManager/Seat0
+  XDG_CONFIG_DIRS=/etc/xdg/xdg-ubuntu:/usr/share/upstart/xdg:/etc/xdg
+  SESSION=ubuntu
+  PT6HOME=/opt/pt
+  LANG=en_IN
+  DISPLAY=:0
+  PWD=/home/gaurav/mygit/1D
+  LOGNAME=gaurav
+  SHLVL=1
+  MANDATORY_PATH=/usr/share/gconf/ubuntu.mandatory.path
+  GNOME_KEYRING_PID=
+  LANGUAGE=en_IN:en
+  COMPIZ_CONFIG_PROFILE=ubuntu
+  XDG_GREETER_DATA_DIR=/var/lib/lightdm-data/gaurav
+  QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1
+  QT_QPA_PLATFORMTHEME=appmenu-qt5
+  GTK_IM_MODULE=ibus
+  XDG_SESSION_ID=c2
+  GTK2_MODULES=overlay-scrollbar
+  DESKTOP_SESSION=ubuntu
+  IM_CONFIG_PHASE=1
+  DEFAULTS_PATH=/usr/share/gconf/ubuntu.default.path
+  GDMSESSION=ubuntu
+  GNOME_KEYRING_CONTROL=
+  XDG_VTNR=7
+  GNOME_DESKTOP_SESSION_ID=this-is-deprecated
+  XDG_SESSION_DESKTOP=ubuntu
+  XDG_RUNTIME_DIR=/run/user/1000
+  GPG_AGENT_INFO=/home/gaurav/.gnupg/S.gpg-agent:0:1
+  DBUS_SESSION_BUS_ADDRESS=unix:abstract=/tmp/dbus-VqvqjtDeqW
+  VTE_VERSION=4205
+  XAUTHORITY=/home/gaurav/.Xauthority
+  XDG_DATA_DIRS=/usr/share/ubuntu:/usr/share/gnome:/usr/local/share:/usr/share:/var/lib/snapd/desktop:/var/lib/snapd/desktop
+  CLUTTER_IM_MODULE=xim
+  UPSTART_SESSION=unix:abstract=/com/ubuntu/upstart-session/1000/3623
+  SESSIONTYPE=gnome-session
+  JOB=dbus
+  QT4_IM_MODULE=xim
+  NODE_PATH=/home/gaurav/.nvm/versions/node/v8.9.4/bin/node:/home/gaurav/.nvm/versions/node/v8.9.4/lib/node_modules:/usr/lib/nodejs:/usr/lib/node_modules:/usr/share/javascript:
+  XDG_MENU_PREFIX=gnome-
+  GDM_LANG=en_US
+  QT_ACCESSIBILITY=1
+  SHELL=/usr/bin/zsh
+  WINDOWID=98567007
+  TERM=xterm-256color
+  SESSION_MANAGER=local/gaurav-Lenovo-Y520-15IKBN:@/tmp/.ICE-unix/4035,unix/gaurav-Lenovo-Y520-15IKBN:/tmp/.ICE-unix/4035
+  GTK_MODULES=gail:atk-bridge:unity-gtk-module
+  XDG_SESSION_TYPE=x11
+  PATH=/home/gaurav/anaconda3/bin:/home/gaurav/.nvm/versions/node/v8.9.4/bin:/home/gaurav/bin:/home/gaurav/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+  QT_IM_MODULE=ibus
+  HOME=/home/gaurav
+  XDG_CURRENT_DESKTOP=Unity
+  INSTANCE=
+  XDG_SEAT=seat0
+  XDG_SESSION_PATH=/org/freedesktop/DisplayManager/Session0
+  SSH_AUTH_SOCK=/run/user/1000/keyring/ssh
+  USER=gaurav
+  XMODIFIERS=@im=ibus
+  OLDPWD=/home/gaurav/mygit/1D
+  ZSH=/home/gaurav/.oh-my-zsh
+  PAGER=less
+  LESS=-R
+  LC_CTYPE=en_IN
+  LSCOLORS=Gxfxcxdxbxegedabagacad
+  LS_COLORS=rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.Z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.jpg=01;35:*.jpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:
+  NVM_DIR=/home/gaurav/.nvm
+  NVM_CD_FLAGS=-q
+  NVM_BIN=/home/gaurav/.nvm/versions/node/v8.9.4/bin
+  _=/home/gaurav/.nvm/versions/node/v8.9.4/bin/nodemon
+  PORT=3001
+  CLINIC_ID=PHO
+  PASSWORD=root123
+  DATABASE=dummy_data
+  SUPPRESS_NO_CONFIG_WARNING=y
+  GRPC_SSL_CIPHER_SUITES=ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384
+
+Resource limits                        soft limit      hard limit
+  core file size (blocks)                       0       unlimited
+  data seg size (kbytes)                unlimited       unlimited
+  file size (blocks)                    unlimited       unlimited
+  max locked memory (bytes)                 65536           65536
+  max memory size (kbytes)              unlimited       unlimited
+  open files                              1048576         1048576
+  stack size (bytes)                      8388608       unlimited
+  cpu time (seconds)                    unlimited       unlimited
+  max user processes                        63214           63214
+  virtual memory (kbytes)               unlimited       unlimited
+
+Loaded libraries
+  /lib/x86_64-linux-gnu/libdl.so.2
+  /lib/x86_64-linux-gnu/librt.so.1
+  /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+  /lib/x86_64-linux-gnu/libm.so.6
+  /lib/x86_64-linux-gnu/libgcc_s.so.1
+  /lib/x86_64-linux-gnu/libpthread.so.0
+  /lib/x86_64-linux-gnu/libc.so.6
+  /lib64/ld-linux-x86-64.so.2
+  /lib/x86_64-linux-gnu/libnss_files.so.2
+  /home/gaurav/.nvm/versions/node/v8.9.4/lib/node_modules/composer-client/node_modules/grpc/src/node/extension_binary/node-v57-linux-x64-glibc/grpc_node.node
+  /home/gaurav/.nvm/versions/node/v8.9.4/lib/node_modules/composer-cli/node_modules/node-report/api.node
+  /home/gaurav/.nvm/versions/node/v8.9.4/lib/node_modules/composer-cli/node_modules/grpc/src/node/extension_binary/node-v57-linux-x64-glibc/grpc_node.node
+
+================================================================================

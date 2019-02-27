@@ -1,11 +1,15 @@
 # Temporary folder for testing js snippets
 temp/
 
-hie_dir/*
-ehr_dir/mrn_cache/*
+# composer card
+*.card
+
+ccda_store/*
+ccda_cache/*
+ehr_store/from_blockchain/*
 
 # Does not remain in sync between PCs + Increases modified lines count in commits
-package-lock.json		
+package-lock.json
 
 
 # Logs

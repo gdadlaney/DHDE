@@ -6,8 +6,9 @@ const readline = require('readline');
 const {
 	port,
 	ehr_id,
+	HIE_IP,
 } = require('./config'); //environment variables
-const url = `http://localhost:${port}/api/documents`;
+const url = `http://${HIE_IP}:${port}/api/documents`;
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
@@ -37,13 +38,13 @@ rl.question("1. Upload file\n2. Request file\nEnter choice: ", (answer) => {
 		});
 
 		// multipart/form-data is needed to transfer a file.
-		const filepath = './ehr_dir/sample.xml';
+		const filepath = './ehr_dir/AdamHamilton.xml';
 		const form = req.form();
 		form.append('file', fs.createReadStream(filepath));		// createReadStream() does not contain the actual data of a file, but the path. Try to run it from a different system.
-		form.append('pat_id', "123");
-		form.append('ehr_id', `${ehr_id}`);
-		form.append('doc_id', "456");
-		form.append('mrn', "123");
+		// form.append('pat_id', "123");
+		// form.append('ehr_id', `${ehr_id}`);
+		// form.append('doc_id', "456");
+		// form.append('mrn', "123");
 		// We don't need to submit the form manually.
 		// Items can be added until the request is fired on the next cycle of the event-loop
 
@@ -51,7 +52,7 @@ rl.question("1. Upload file\n2. Request file\nEnter choice: ", (answer) => {
 	} else if (answer == 2) {
 		const dir_path = './ehr_dir/mrn_cache'			// name of directory to store the files in 
 		const requested_mrn = '123';
-		const get_url = url + '?name=Blaine+Wolfe&country=Kuwait';
+		const get_url = url + '?name=Adam+Hamilton&country=US';
 
 		request.get(get_url, function(err, resp, body) {
 			if (err)
@@ -65,7 +66,6 @@ rl.question("1. Upload file\n2. Request file\nEnter choice: ", (answer) => {
 							console.log(err);
 						else {
 							console.log("Successfully recieved requested data");
-							console.log(body);
 						}
 					});
 				}
