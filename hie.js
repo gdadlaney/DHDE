@@ -60,24 +60,32 @@ async function handleCCDARequest(req, res) {
 
 	// 2. Get the CCDA
 	console.log(ls.info,"Checking if CCDA exists locally");
-	let abs_file_path = searchInLocal(latest_CCDA_obj);
-	if (abs_file_path === null) {
-		console.log(ls.info,"CCDA not found locally. CCDA needs to be requested from other clinic"); 					// file not found
-		abs_file_path = await requestCCDATransfer(latest_CCDA_obj);
+	let abs_file_path = await searchInLocal(latest_CCDA_obj);
+	if (abs_file_path[1] == 409)
+		res.status(409).send("Hash Check Failed");
+	else{
+		if (abs_file_path[0] === null) {
+			console.log(ls.info,"CCDA not found locally. CCDA needs to be requested from other clinic"); 					// file not found
+			abs_file_path[0] = await requestCCDATransfer(latest_CCDA_obj);
+		}
+	
+		if (abs_file_path[0] === null) 
+			console.log(ls.error,"requestCCDATransfer() failed in some uncertain way!!! ");		// this should never fire - put in catch
+		else
+			await submitLocalAccessTransaction(latest_CCDA_obj.hash, CLINIC_ID, req.query['DocId'], req.query['DocName']);
+	
+		res.sendFile(abs_file_path[0]);				// handle callback
 	}
-
-	if (abs_file_path === null) console.log(ls.error,"requestCCDATransfer() failed in some uncertain way!!! ");		// this should never fire - put in catch
-
-	res.sendFile(abs_file_path);				// handle callback
 }
 
-function searchInLocal(latest_CCDA_obj) {
+async function searchInLocal(latest_CCDA_obj) {
 	const file = latest_CCDA_obj.hash+".xml";
 
 	// searchInStore
 	console.log("Checking if CCDA exists in CCDA_store");
 	let abs_file_path = searchInDir(file, ccda_store_path);
-
+	let statusCode = 200;
+	
 	if (abs_file_path === null) {
 		console.log("CCDA not found in CCDA_Store");
 
@@ -85,11 +93,22 @@ function searchInLocal(latest_CCDA_obj) {
 		
 		console.log("Checking if CCDA exists in CCDA_cache");
 		abs_file_path = searchInDir(file, ccda_cache_path);
+		
+		if (abs_file_path === null) 
+			console.log("CCDA not found in CCDA_Cache");
+		else if (latest_CCDA_obj.hash != await computeFileHash(file, ccda_cache_path)) {
+			console.log("Hash Check Failed");
+			statusCode = 409;
+		}
 	}
+	else if (latest_CCDA_obj.hash != await computeFileHash(file, ccda_store_path)) {
+		console.log("Hash Check Failed");
+		statusCode = 409;
+	}
+	else
+		console.log("Hash Verified");
 
-	if (abs_file_path === null) console.log("CCDA not found in CCDA_Cache");
-
-	return abs_file_path;
+	return [abs_file_path, statusCode];
 }
 
 function searchInDir(file, dir) {
@@ -129,14 +148,10 @@ async function getFile(target_hash, target_clinic) {
 	 * TODO - DNS	// only needed if more than 2 hies are in the network
 	 * Create a mapping of target_clinic and ip
 	 * This will be used to construct base_url
-	 * For now assume that the IP of target clinic is 127.0.0.2
+	 * For now assume that the IP of target clinic is 127.0.0.1
 	 */
-	const { con } =  await mysql_connect();
-	 sql = `SELECT * from DNS WHERE Clinic_Id='${target_clinic}';`;
-	let [rows, fields] = await con.execute(sql);
-	let target_clinic_ip = rows[0].Clinic_IP;
 
-	const base_url = `http://${target_clinic_ip}:${port}`;
+	const base_url = `http://127.0.0.1:${port}`;
 
 	const url = base_url + `/${target_clinic}/api/documents/`;
 	const get_url = url + `?hash=${target_hash}`;				// use route params instead of query params
@@ -148,7 +163,7 @@ async function getFile(target_hash, target_clinic) {
 				reject(err);
 			}
 			else {
-				if (resp.statusCode == 404 || resp.statusCode == 400)
+				if (resp.statusCode == 404 || resp.statusCode == 400 || resp.statusCode == 409)
 					console.log(body);
 				else {
 					const abs_path = path.join(__dirname, ccda_cache_path, target_hash+'.xml');
@@ -178,11 +193,11 @@ async function getFile(target_hash, target_clinic) {
 			}
 		});
 	});
-
-
 }
 
-app.get(`/${CLINIC_ID}/api/documents/?`, (req, res) => {
+app.get(`/${CLINIC_ID}/api/documents/?`, handleCCDATransfer);
+
+async function handleCCDATransfer(req, res) {
 
 	// check transaction (identified by hash)
 
@@ -190,14 +205,18 @@ app.get(`/${CLINIC_ID}/api/documents/?`, (req, res) => {
 	const requested_hash = req.query['hash'];
 	const hash_path = path.join(__dirname, dir_path, requested_hash+".xml");
 
-	let hash_found = requested_hash;	// change this
-
-	// hash check
-	
 	try {
 		fs.statSync(hash_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
-		res.sendFile(hash_path);		// convenient method
-		console.log(`File: ${hash_found+".xml"} found & send back successfully`);
+		
+		let hash_found = await computeFileHash(`${requested_hash}.xml`, dir_path);
+		if (requested_hash != hash_found) {
+			console.log("Hash Check Failed");
+			res.status(409).send("Hash Check Failed");
+		}
+		else {
+			res.sendFile(hash_path);		// convenient method
+			console.log(`File: ${hash_found+".xml"} found & send back successfully`);
+		}
 	}
 	catch (err) {
 		console.log('* Error in file lookup');
@@ -206,7 +225,27 @@ app.get(`/${CLINIC_ID}/api/documents/?`, (req, res) => {
 		else
 			res.status(400).send(err);			// 400: Bad Request
 	}
-});
+};
+
+async function submitLocalAccessTransaction(hash, requesterId, docId, docName) {
+try {
+		let TransactionSubmit = require('composer-cli').Transaction.Submit;
+		
+		let options = {
+			card: 'admin@ccda-transfer',
+			data: `{
+				"$class": "org.transfer.LocalAccess",
+				"hash": "resource:org.transfer.CCDA#${hash}",
+				"requesterId": "resource:org.transfer.Clinic#${requesterId}",
+				"docId": "${docId}",
+				"docName": "${docName}"
+			}`
+		};
+		TransactionSubmit.handler(options);
+	} catch (error) {
+		console.log('Error in submitting Local Access transaction:', error);
+	}
+}
 
 async function submitStartTransferTransaction(hash, owner_id) {
 	try {
@@ -255,20 +294,22 @@ async function createEMPIQuery(req, res) {
 	let sql = "SELECT * FROM `EMPI` WHERE ";
 	let i = 1;
 	for (const key in query) {
-		if (query[key]) {
-			if (i != 1) {
-				sql += "AND "
+		if (key != 'DocId' && key != 'DocName') {
+			if (query[key]) {
+				if (i != 1) {
+					sql += "AND "
+				}
+				// security: Is this SQL injection resistant?
+				sql += `${key} LIKE '${query[key]}' `;			// Like used for case-insensitivity
+				i++;
 			}
-			// security: Is this SQL injection resistant?
-			sql += `${key} LIKE '${query[key]}' `;			// Like used for case-insensitivity
-			i++;
-		}
-		else {
-			number_of_fields--;
-			// console.log(number_of_fields);
-
-			if (number_of_fields === 0) {
-				patient_info_empty = true;
+			else {
+				number_of_fields--;
+				// console.log(number_of_fields);
+	
+				if (number_of_fields === 0) {
+					patient_info_empty = true;
+				}
 			}
 		}
 	}
