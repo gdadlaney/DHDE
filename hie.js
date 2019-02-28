@@ -10,6 +10,7 @@ const request = require('request');
 const busboy = require('connect-busboy');
 var bodyParser = require('body-parser');
 const ls = require('log-symbols');
+var date;
 
 /**Custom modules
  * connect.js : Business network connection and details.
@@ -114,13 +115,13 @@ async function requestCCDATransfer(latest_CCDA_obj) {
 	let target_clinic = latest_CCDA_obj.ownerId;
 
 	console.log(`Requesting: ${latest_CCDA_obj.ownerId} for CCDA transfer`);
-	await submitStartTransferTransaction(target_hash, target_clinic);
+	let date=await submitStartTransferTransaction(target_hash, target_clinic);
 	console.log(ls.success,"Request logged on the blockchain");
 
 	console.log("")
 	let abs_path = await getFile(target_hash, target_clinic);
 
-	await submitFinishTransferTransaction();
+	await submitFinishTransferTransaction(date);
 	return abs_path;
 }
 
@@ -211,30 +212,47 @@ app.get(`/${CLINIC_ID}/api/documents/?`, (req, res) => {
 async function submitStartTransferTransaction(hash, owner_id) {
 	try {
 		let TransactionSubmit = require('composer-cli').Transaction.Submit;
-		
+		date=new Date();
+        date= date.toISOString();
 		let options = {
 			card: 'admin@ccda-transfer',
 			data: `{
 				"$class": "org.transfer.StartTransfer",
 				"hash": "resource:org.transfer.CCDA#${hash}",
 				"requesterId": "resource:org.transfer.Clinic#${CLINIC_ID}",
-				"providerId": "resource:org.transfer.Clinic#${owner_id}"
+				"providerId": "resource:org.transfer.Clinic#${owner_id}",
+				"timestamp": "${date}"
 			}`
 		};
 		TransactionSubmit.handler(options);
+		return date;
 	} catch (error) {
 		console.log('Error in submitting Final Transfer transaction:', error);
 	}
 }
 
-async function submitFinishTransferTransaction() {
+async function submitFinishTransferTransaction(date) {
 	try {
 		let TransactionSubmit = require('composer-cli').Transaction.Submit;
-		
+		console.log("in Query function");
+        console.log(date)
+     
+        let q1 =await this.bizNetworkConnection.buildQuery(
+            `SELECT org.hyperledger.composer.system.HistorianRecord
+              WHERE (transactionType == 'org.transfer.StartTransfer' AND transactionTimestamp==${date})`
+        );      
+        console.log("after writing query");
+        let record=await this.bizNetworkConnection.query(q1);
+        console.log("after printing query");
+       
+        console.log(record);
 		let options = {
 			card: 'admin@ccda-transfer',
 			data: `{
-				"$class": "org.transfer.FinishTransfer" 
+				"$class": "org.transfer.FinishTransfer",
+				"StartTransId":"${record.$identifier}",
+				"Success":"Yes",
+				"ErrorMessage":"None"
 			}`
 		};
 		TransactionSubmit.handler(options);
