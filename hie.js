@@ -11,6 +11,22 @@ const busboy = require('connect-busboy');
 var bodyParser = require('body-parser');
 const ls = require('log-symbols');
 
+
+/*Auditing the Historian*/
+const prettyoutput = require('prettyoutput')
+
+/*
+	UI
+*/
+// const layout = require('express-layout')
+// app.set('views', path.join(__dirname, 'views'))
+// const middleware = [
+//   layout(),
+//   express.static(path.join(__dirname, 'public')),
+// ]
+// app.use(middleware)
+
+
 /**Custom modules
  * connect.js : Business network connection and details.
  * mysql_connect.js : Mysql connection
@@ -66,8 +82,12 @@ async function handleCCDARequest(req, res) {
 		abs_file_path = await requestCCDATransfer(latest_CCDA_obj);
 	}
 
-	if (abs_file_path === null) console.log(ls.error,"requestCCDATransfer() failed in some uncertain way!!! ");		// this should never fire - put in catch
-
+	if (abs_file_path === null) {
+		console.log(ls.error,"requestCCDATransfer() failed in some uncertain way!!! ");		// this should never fire - put in catch
+	}
+	// else{
+	// 	await submitLocalAccessTransaction(latest_CCDA_obj.hash, CLINIC_ID);//insert 
+	// }
 	res.sendFile(abs_file_path);				// handle callback
 }
 
@@ -88,6 +108,7 @@ function searchInLocal(latest_CCDA_obj) {
 	}
 
 	if (abs_file_path === null) console.log("CCDA not found in CCDA_Cache");
+	console.log("CCDA found locally");
 
 	return abs_file_path;
 }
@@ -131,8 +152,12 @@ async function getFile(target_hash, target_clinic) {
 	 * This will be used to construct base_url
 	 * For now assume that the IP of target clinic is 127.0.0.2
 	 */
+	const { con } =  await mysql_connect();
+	 sql = `SELECT * from DNS WHERE Clinic_Id='${target_clinic}';`;
+	let [rows, fields] = await con.execute(sql);
+	let target_clinic_ip = rows[0].Clinic_IP;
 
-	const base_url = `http://127.0.0.2:${port}`;
+	const base_url = `http://${target_clinic_ip}:${port}`;
 
 	const url = base_url + `/${target_clinic}/api/documents/`;
 	const get_url = url + `?hash=${target_hash}`;				// use route params instead of query params
@@ -203,6 +228,24 @@ app.get(`/${CLINIC_ID}/api/documents/?`, (req, res) => {
 			res.status(400).send(err);			// 400: Bad Request
 	}
 });
+// async function submitLocalAccessTransaction(hash, requesterId) {
+// 	try {
+// 		let TransactionSubmit = require('composer-cli').Transaction.Submit;
+		
+// 		let options = {
+// 			card: 'admin@ccda-transfer',
+// 			data: `{
+// 				"$class": "org.transfer.LocalAccess",
+// 				"hash": "resource:org.transfer.CCDA#${hash}",
+// 				"requesterId": "resource:org.transfer.Clinic#${requesterId}",
+// 				"patId":
+// 			}`//add patient id here
+// 		};
+// 		TransactionSubmit.handler(options);
+// 	} catch (error) {
+// 		console.error('Error in submitting Local Access transaction:', error);
+// 	}
+// }
 
 async function submitStartTransferTransaction(hash, owner_id) {
 	try {
@@ -465,6 +508,72 @@ async function computeFileHash(file, dir) {
 	return deferred.promise;
 }
 app.post('/api/documents', handleUploadCCDA);
+
+async function AddAssetaudit(req,res){
+	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
+	// let historian = await bizNetworkConnection.getHistorian();
+	// let historianRecords = await historian.getAll();
+
+    
+	/*
+	Querying all StartTransfer transactions
+	*/
+	// let hname = "CHO";
+ //    let q1 = bizNetworkConnection.buildQuery(`SELECT org.transfer.StartTransfer WHERE (requesterId=='resource:org.transfer.Clinic#SHO')`);   
+
+ // 	let ST = await bizNetworkConnection.query(q1);
+ //    // console.log(ST);
+ //    console.log("Hash of CCDA that was requested:"+ST[0].hash.$identifier);
+ //    console.log("Requesting Hospital:"+ST[0].requesterId.$identifier);
+ //    console.log("Providing Hospital:"+ST[0].providerId.$identifier);
+
+    /*
+		Do same for FinishTransfer
+    */
+
+    
+    /*
+	Querying all the AddAsset Trasactions
+    */
+    let q2 = bizNetworkConnection.buildQuery('SELECT org.hyperledger.composer.system.AddAsset');   
+
+ 	let AA = await bizNetworkConnection.query(q2);
+ 	console.log(AA.length);
+ 	for(i=0;i<AA.length;i++){
+ 		console.log(`*************RECORD ${i}*************`);
+	    console.log("Hash:"+AA[i].resources[0].hash);
+	    console.log("Owner:"+AA[i].resources[0].ownerId.$identifier);
+	    console.log("Patient:"+AA[i].resources[0].patId.$identifier);
+	    console.log(`-------------------------------------`);
+ 	}
+   
+    // let q3 = bizNetworkConnection.buildQuery(`SELECT org.transfer.StartTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);   
+
+
+    console.log(typeof AA);
+    res.send(AA);
+}
+app.get('/AddAsset',AddAssetaudit);
+
+async function PatientCCDAAudit(req,res){
+	
+	let pat_id = await createEMPIQuery(req, res);
+	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
+
+	let query = bizNetworkConnection.buildQuery(`SELECT org.transfer.CCDA WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
+	
+	// wrap query in try catch
+	let assets = await bizNetworkConnection.query(query);
+
+	
+	if (assets.length == 0) {
+		console.log(ls.error, "CCDA not found in blockchain");
+		return null;
+	}
+
+		res.send(assets);
+}
+app.get('/PatientCCDAAudit',PatientCCDAAudit);
 
 // Creation of EMPI
 

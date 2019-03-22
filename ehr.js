@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const readlineSync = require('readline-sync');
 var menu = require('node-menu');
+var Table = require('cli-table');
 
 const {
 	port,
@@ -41,14 +42,14 @@ function UploadFile(){
 				else {
 						const res_obj = JSON.parse(body);
 						console.log(res_obj);
+						console.log("CCDA Successfully Uploaded")
 				}
 		}
 	});
 
 	const form = req.form();
 	form.append('file', fs.createReadStream(filepath));
-}
-
+}	
 function GetPatientInfo(){
 	console.log("Please enter patient information. Press enter to skip");
 	const query = {};
@@ -57,10 +58,7 @@ function GetPatientInfo(){
 	query.Country = readlineSync.question("Enter country of patient: ");
 	query.SSN = readlineSync.question("Enter ssn of patient: ");
 	
-	// const query = {FirstName: 'Adam', LastName: 'Hamilton', Country: 'US', };
-
-	// To Refactor
-	// request.get(get_url, function(err, resp, body) {
+	
 	// sending a get request with the query params
 	request({url:url, qs: query}, function(err, resp, body) {
 		if (err)
@@ -91,7 +89,7 @@ function GetPatientInfo(){
 }	
 
 menu.customHeader(function() {
-    process.stdout.write("\nDATA EXCHANGE PLATFORM\n");
+    process.stdout.write(`\nDATA EXCHANGE PLATFORM for ${CLINIC_ID}\n`);
 })
 menu.customPrompt(function() {
     process.stdout.write("Enter choice: \n");

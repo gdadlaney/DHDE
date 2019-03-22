@@ -9,13 +9,13 @@
   <templateId root="2.16.840.1.113883.10.20.22.1.2" />
   <id root="1dd4abd6-1b24-4785-89e6-24f18775d582" extension="fe31693e-3b08-43cc-8625-6bdf90ff2784" assigningAuthorityName="Drummond Group Inc" />
   <code code="34133-9" codeSystem="2.16.840.1.113883.6.1" codeSystemName="LOINC" displayName="Summarization of Episode Note" />
-  <title>Hamilton, Adam : Health Summary</title>
+  <title>Dadlaney, Gaurav : Health Summary (Visit one at PHO)</title>
   <effectiveTime value="20190204202601" />
   <confidentialityCode code="N" codeSystem="2.16.840.1.113883.5.25" />
   <languageCode code="en-US" />
   <recordTarget>
     <patientRole>
-      <id root="AH19" extension="PH105585" />
+      <id root="GD50" extension="PH105585" />
       <addr use="HP">
         <streetAddressLine>4878 Harber Ramp Stravenue</streetAddressLine>
         <city>Bartonton</city>
@@ -24,8 +24,8 @@
       </addr>
       <patient>
         <name use="L">
-          <given>Adam</given>
-          <family>Hamilton</family>
+          <given>Gaurav</given>
+          <family>Dadlaney</family>
         </name>
         <administrativeGenderCode code="M" codeSystem="2.16.840.1.113883.5.1" codeSystemName="AdministrativeGender" displayName="Male" />
         <birthTime value="19780528" />
