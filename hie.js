@@ -43,7 +43,7 @@ const {
 	sql_pass,
 	sql_db,
 } = require('./config');
-const dir_path = './ccda_store';			// remove
+
 const ccda_store_path = './ccda_store';
 const ccda_cache_path = './ccda_cache';
 
@@ -126,7 +126,7 @@ async function searchInLocal(latest_CCDA_obj) {
 		else
 			computed_hash = await computeFileHash(file, ccda_cache_path);
 	if (latest_CCDA_obj.hash != computed_hash) {
-		console.log(ls.error, "Hash Check Failed");
+		console.log(ls.warning, "Hash Check Failed");
 		// delete file
 		ret_obj.hashVerified = false;
 	}
@@ -154,7 +154,8 @@ function searchInDir(file, dir) {
 async function requestCCDATransfer(latest_CCDA_obj) {
 	console.log(ls.info,`Id of target_clinic: ${latest_CCDA_obj.ownerId}`);
 	
-	const target_patId = latest_CCDA_obj.PatId;
+	console.log("latest_ccda_obj", latest_CCDA_obj);
+	const target_patId = latest_CCDA_obj.patId;
 	const target_hash = latest_CCDA_obj.hash;
 	const target_clinic = latest_CCDA_obj.ownerId;
 	let req_success = true;
@@ -162,6 +163,7 @@ async function requestCCDATransfer(latest_CCDA_obj) {
 
 	console.log(`Requesting: ${latest_CCDA_obj.ownerId} for CCDA transfer`);
 	let StartTransferTimeId = await submitStartTransferTransaction(target_patId, target_hash, target_clinic);
+	// let StartTransferTimeId = new Date().toISOString()
 	console.log(ls.success,"Request logged on the blockchain");
 
 	let abs_path = await getFile(target_hash, target_clinic);
@@ -171,7 +173,7 @@ async function requestCCDATransfer(latest_CCDA_obj) {
 		err_msg = 'File requested from clinic was either missing OR corrupt';
 	}
 
-	await submitFinishTransferTransaction(StartTransferTimeId, req_success, err_msg);
+	await submitFinishTransferTransaction(target_patId, target_hash, target_clinic, StartTransferTimeId, req_success, err_msg);
 	return {abs_path, StartTransferTimeId};
 }
 
@@ -233,12 +235,12 @@ async function handleCCDATransfer(req, res) {
 
 	// req.query is a dict with all query params
 	const requested_hash = req.query['hash'];
-	const hash_path = path.join(__dirname, dir_path, requested_hash+".xml");
+	const hash_path = path.join(__dirname, ccda_store_path, requested_hash+".xml");
 
 	try {
 		fs.statSync(hash_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
 		
-		let hash_found = await computeFileHash(`${requested_hash}.xml`, dir_path);
+		let hash_found = await computeFileHash(`${requested_hash}.xml`, ccda_store_path);
 		if (requested_hash != hash_found) {
 			console.log("Hash Check Failed");
 			res.status(409).send("Hash Check Failed");
@@ -270,11 +272,12 @@ async function submitLocalAccessTransaction(patId, hash, owner_id, start_timesta
 				"patId": "resource:org.transfer.Patient#${patId}",
 				"hash": "resource:org.transfer.CCDA#${hash}",
 				"requesterId": "resource:org.transfer.Clinic#${CLINIC_ID}",
-				"StartTransferTimeId": "${start_timestamp}",
+				"providerId": "resource:org.transfer.Clinic#${owner_id}",
+				"StartTransId": "${start_timestamp}",
 				"docId": "${docId}",
-				"docName": "${docName}",
+				"docName": "${docName}"
 			}`
-			// "providerId": "resource:org.transfer.Clinic#${owner_id}",
+			
 		};
 		TransactionSubmit.handler(options);
 	} catch (error) {
@@ -283,10 +286,12 @@ async function submitLocalAccessTransaction(patId, hash, owner_id, start_timesta
 }
 
 async function submitStartTransferTransaction(patId, hash, owner_id) {
+	let my_date = new Date();
+	
 	try {
 		let TransactionSubmit = require('composer-cli').Transaction.Submit;
-		date = new Date();
-		date = date.toISOString();
+		
+		my_date = my_date.toISOString();
 		
 		let options = {
 			card: 'admin@ccda-transfer',
@@ -296,18 +301,19 @@ async function submitStartTransferTransaction(patId, hash, owner_id) {
 				"hash": "resource:org.transfer.CCDA#${hash}",
 				"requesterId": "resource:org.transfer.Clinic#${CLINIC_ID}",
 				"providerId": "resource:org.transfer.Clinic#${owner_id}",
-				"timestampId": "${date}",
-			}`
+				"timestampId": "${my_date}"
+			}`,
 		};
+		// console.log("start: ", options)
 		TransactionSubmit.handler(options);
 	} catch (error) {
 		console.error('Error in submitting Final Transfer transaction:', error);
 	}
 
-	return date;
+	return my_date;
 }
 
-async function submitFinishTransferTransaction(date, req_success, err_msg) {
+async function submitFinishTransferTransaction(patId, hash, owner_id, start_timestamp, success_flag, err_msg) {
 	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
 	
 	try {
@@ -337,11 +343,13 @@ async function submitFinishTransferTransaction(date, req_success, err_msg) {
 				"hash": "resource:org.transfer.CCDA#${hash}",
 				"requesterId": "resource:org.transfer.Clinic#${CLINIC_ID}",
 				"providerId": "resource:org.transfer.Clinic#${owner_id}",
-				"StartTransferTimeId": "${start_timestamp}",
+				"StartTransId": "${start_timestamp}",
 				"Success": ${success_flag},
-				"ErrorMessage": "${err_msg}",
+				"ErrorMessage": "${err_msg}"
 			}`
 		};
+
+		// console.log("finish: ", options)
 		TransactionSubmit.handler(options);
 	} catch (error) {
 		console.error('Error in submitting Final Transfer transaction:', error);
@@ -405,7 +413,7 @@ async function createEMPIQuery(req, res) {
 async function getLatestCCDA(pat_id) {
 	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
 
-	let query = bizNetworkConnection.buildQuery(`SELECT org.transfer.CCDA WHERE (patId=="${pat_id}")`);
+	let query = bizNetworkConnection.buildQuery(`SELECT org.transfer.CCDA WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
 	
 	// wrap query in try catch
 	let assets = await bizNetworkConnection.query(query);
@@ -427,7 +435,7 @@ async function getLatestCCDA(pat_id) {
 	const asset_obj = {
 		hash: max.hash,
 		ownerId: max.ownerId.$identifier,	// Identifier used as Relationships are returned. Resolving queries is not possible w/o rest API.
-		patId: max.patId,	
+		patId: max.patId.$identifier,	
 		lastUpdate: max.lastUpdate,
 	};
 	console.log(ls.success, "Latest CCDA found: ");
