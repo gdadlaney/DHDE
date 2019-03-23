@@ -80,7 +80,7 @@ async function handleCCDARequest(req, res) {
 	let abs_file_path = ret_obj.abs_file_path;
 	if (ret_obj.hashVerified === false) {
 		console.log(ls.info, "CCDA not found locally. CCDA needs to be requested from another clinic"); 					// file not found
-		(abs_file_path, StartTransferTimeId) = await requestCCDATransfer(latest_CCDA_obj);
+		const {abs_file_path, StartTransferTimeId} = await requestCCDATransfer(latest_CCDA_obj);
 	
 		if (abs_file_path === null) 
 			console.log(ls.error,"requestCCDATransfer() failed in some uncertain way!!! ");		// this should never fire - put in catch
@@ -172,7 +172,7 @@ async function requestCCDATransfer(latest_CCDA_obj) {
 	}
 
 	await submitFinishTransferTransaction(StartTransferTimeId, req_success, err_msg);
-	return abs_path, StartTransferTimeId;
+	return {abs_path, StartTransferTimeId};
 }
 
 async function getFile(target_hash, target_clinic) {
@@ -484,7 +484,7 @@ async function addCCDA(block_data) {
 		}
 
 		let newCCDA = factory.newResource('org.transfer', 'CCDA', hash);
-		newCCDA.patId = patId;
+		newCCDA.patId = factory.newRelationship('org.transfer', 'Patient', patId);
 		newCCDA.ownerId = factory.newRelationship('org.transfer', 'Clinic', clinicId);
 		newCCDA.lastUpdate = new Date();
 		await CCDA_Registry.add(newCCDA);
