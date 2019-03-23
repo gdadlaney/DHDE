@@ -53,6 +53,8 @@ function UploadFile(){
 function GetPatientInfo(){
 	console.log("Please enter patient information. Press enter to skip");
 	const query = {};
+	query.DocId = readlineSync.question("Enter Id of doctor: ");
+	query.DocName = readlineSync.question("Enter name of doctor: ");
 	query.FirstName = readlineSync.question("Enter first_name of patient: ");
 	query.LastName = readlineSync.question("Enter last_name of patient: ");
 	query.Country = readlineSync.question("Enter country of patient: ");
@@ -144,7 +146,7 @@ app.get('/requestCCDA?', (req, res) => {
 				console.log(`Error: ${err}`);
 				res.send(`Error: ${err}`);
 			} else {
-				if (resp.statusCode == 404 || resp.statusCode == 400) {
+				if (resp.statusCode == 404 || resp.statusCode == 400 || resp.statusCode == 409) {
 					console.log(`${resp.statusCode}: ${err}`);
 					res.send(`${resp.statusCode}: ${err}`);
 				}
