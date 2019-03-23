@@ -80,13 +80,16 @@ async function handleCCDARequest(req, res) {
 
 async function searchInLocal(latest_CCDA_obj) {
 	const file = latest_CCDA_obj.hash+".xml";
-	let ret_obj = { abs_file_path: null, hashVerified: false }
+	let ret_obj = { abs_file_path: null, hashVerified: false };
+	let foundInStore = false;
+	let computed_hash = null;
 
 	// 1. searchInStore
 	ret_obj.abs_file_path = searchInDir(file, ccda_store_path);
 	
 	if (ret_obj.abs_file_path !== null) {
 		console.log(ls.success, "CCDA found in CCDA_Store");
+		foundInStore = true;
 	} else {	
 		console.log(ls.warning, "CCDA not found in CCDA_Store");
 
@@ -102,7 +105,10 @@ async function searchInLocal(latest_CCDA_obj) {
 	
 	// 3. hashCheck
 	if (ret_obj.abs_file_path !== null) 
-		const computed_hash = await computeFileHash(file, ccda_cache_path)
+		if (foundInStore)
+			computed_hash = await computeFileHash(file, ccda_store_path);
+		else
+			computed_hash = await computeFileHash(file, ccda_cache_path);
 	if (latest_CCDA_obj.hash != computed_hash) {
 		console.log(ls.error, "Hash Check Failed");
 		// delete file
@@ -138,7 +144,7 @@ async function requestCCDATransfer(latest_CCDA_obj) {
 	let err_msg = '';
 
 	console.log(`Requesting: ${latest_CCDA_obj.ownerId} for CCDA transfer`);
-	let date = await submitStartTransferTransaction(target_hash, target_clinic);
+	// let date = await submitStartTransferTransaction(target_hash, target_clinic);
 	console.log(ls.success,"Request logged on the blockchain");
 
 	let abs_path = await getFile(target_hash, target_clinic);
@@ -148,7 +154,7 @@ async function requestCCDATransfer(latest_CCDA_obj) {
 		err_msg = 'File requested from clinic was either missing OR corrupt';
 	}
 
-	await submitFinishTransferTransaction(date, req_success, err_msg);
+	// await submitFinishTransferTransaction(date, req_success, err_msg);
 	return abs_path;
 }
 
@@ -164,6 +170,8 @@ async function getFile(target_hash, target_clinic) {
 
 	const url = base_url + `/${target_clinic}/api/documents/`;
 	const get_url = url + `?hash=${target_hash}`;				// use route params instead of query params
+
+	console.log(get_url)
 
 	return new Promise((resolve, reject) => {
 		request.get(get_url, function(err, resp, body) {
@@ -209,6 +217,8 @@ async function handleCCDATransfer(req, res) {
 	// req.query is a dict with all query params
 	const requested_hash = req.query['hash'];
 	const hash_path = path.join(__dirname, dir_path, requested_hash+".xml");
+
+	console.log("hi")
 
 	try {
 		fs.statSync(hash_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
@@ -265,7 +275,7 @@ async function submitStartTransferTransaction(hash, owner_id) {
 				"hash": "resource:org.transfer.CCDA#${hash}",
 				"requesterId": "resource:org.transfer.Clinic#${CLINIC_ID}",
 				"providerId": "resource:org.transfer.Clinic#${owner_id}",
-				"timestamp": "${date}",
+				"timestampId": "${date}",
 			}`
 		};
 		TransactionSubmit.handler(options);
@@ -276,23 +286,25 @@ async function submitStartTransferTransaction(hash, owner_id) {
 }
 
 async function submitFinishTransferTransaction(date, req_success, err_msg) {
+	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
+	
 	try {
 		let TransactionSubmit = require('composer-cli').Transaction.Submit;
         console.log(date)
      
-        let q1 = await this.bizNetworkConnection.buildQuery(
+        let q1 = await bizNetworkConnection.buildQuery(
             `SELECT org.hyperledger.composer.system.HistorianRecord
-              WHERE (transactionType == 'org.transfer.StartTransfer' AND transactionTimestamp == ${date})`
+              WHERE (transactionType == 'org.transfer.StartTransfer' AND transactionTimestamp == '${date}')`
         );      
-		let record = await this.bizNetworkConnection.query(q1);
+		let record = await bizNetworkConnection.query(q1);
 		// if (record is empty) throw error
        
 		let options = {
 			card: 'admin@ccda-transfer',
 			data: `{
 				"$class": "org.transfer.FinishTransfer",
-				"StartTransId": "${record.transactionId}",
-				"Success": ${req_success},
+				"StartTransId": "${record.$identifier}",
+				"Success": "Yes",
 				"ErrorMessage": "${err_msg}", 
 			}`
 		};

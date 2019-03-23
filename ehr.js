@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const readlineSync = require('readline-sync');
 var menu = require('node-menu');
+const ls = require('log-symbols');
 
 const {
 	port,
@@ -33,15 +34,17 @@ function UploadFile(){
 			console.log(`Error while sending post request: ${err}`);
 		}
 		else {
-				if (resp.statusCode === 400	|| resp.statusCode === 422) {
-					const err_msg = body;
-					console.log(resp.statusCode + "Error in received response");
-					console.log(err_msg);
-				}
-				else {
-						const res_obj = JSON.parse(body);
-						console.log(res_obj);
-				}
+			if (resp.statusCode === 400	|| resp.statusCode === 422) {
+				const err_msg = body;
+				console.log(resp.statusCode + "Error in received response");
+				console.log(err_msg);
+			}
+			else {
+					const res_obj = JSON.parse(body);
+					console.log(ls.success, "CCDA successfully uploaded to HIE");
+					console.log(ls.info, "Asset created on blockchain is:")
+					console.log(res_obj);
+			}
 		}
 	});
 
@@ -170,7 +173,7 @@ app.get('/requestCCDA?', (req, res) => {
 							console.log(err);
 							res.send(err);
 						} else {
-							console.log(`Successfully recieved requested data & wrote file: ${pat_name}.xml to disk`);
+							console.log(ls.success, `Successfully recieved requested data & wrote file: ${pat_name}.xml to disk`);
 							// console.log(body);
 							// res.send(body);						///////////// xml
 							const options = {}; // = { headers: { 'Content-Type': 'text/xml' } };
