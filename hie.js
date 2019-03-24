@@ -69,7 +69,7 @@ async function handleCCDARequest(req, res) {
 
 	console.log(ls.info, `Fetching the latest CCDA of ${pat_id} from the blockchain`);
 	let latest_CCDA_obj = await getLatestCCDA(pat_id);						// try-catch may be better 
-	if (latest_CCDA_obj === null) {
+	if ( !latest_CCDA_obj ) {
 		console.log(ls.err, "No records found on the blockchain for the given patient");
 		res.status(404).send("No records found on the blockchain for the given patient");
 		return;			////////
@@ -80,18 +80,22 @@ async function handleCCDARequest(req, res) {
 	let abs_file_path = ret_obj.abs_file_path;
 	if (ret_obj.hashVerified === false) {
 		console.log(ls.info, "CCDA not found locally. CCDA needs to be requested from another clinic"); 					// file not found
-		const {abs_file_path, StartTransferTimeId} = await requestCCDATransfer(latest_CCDA_obj);
-	
-		if (abs_file_path === null) 
-			console.log(ls.error,"requestCCDATransfer() failed in some uncertain way!!! ");		// this should never fire - put in catch
-		else
-			await submitLocalAccessTransaction(latest_CCDA_obj.patId, latest_CCDA_obj.hash, latest_CCDA_obj.ownerId, StartTransferTimeId, req.query['DocId'], req.query['DocName']);
-	}
-	else{
+		const ret_obj = await requestCCDATransfer(latest_CCDA_obj);
+		local_abs_file_path = ret_obj.abs_path;
+		StartTransferTimeId = ret_obj.StartTransferTimeId;
 
+		if ( !local_abs_file_path ) 
+			console.log(ls.error,"requestCCDATransfer() failed in some uncertain way!!! ");		// this should never fire - put in catch
+		else {
+			abs_file_path = local_abs_file_path
+			await submitLocalAccessTransaction(latest_CCDA_obj.patId, latest_CCDA_obj.hash, latest_CCDA_obj.ownerId, StartTransferTimeId, req.query['DocId'], req.query['DocName']);
+		}
+	} else {
+		// Found in cache
 		await submitLocalAccessTransaction(latest_CCDA_obj.patId, latest_CCDA_obj.hash, latest_CCDA_obj.ownerId, null, req.query['DocId'], req.query['DocName']);
 	}
-	if (abs_file_path !== null)
+
+	if ( abs_file_path != null)
 		res.sendFile(abs_file_path);				// handle callback
 	else
 		res.status(404).send("File not found OR was corrupt");
@@ -106,7 +110,7 @@ async function searchInLocal(latest_CCDA_obj) {
 	// 1. searchInStore
 	ret_obj.abs_file_path = searchInDir(file, ccda_store_path);
 	
-	if (ret_obj.abs_file_path !== null) {
+	if (ret_obj.abs_file_path != null) {
 		console.log(ls.success, "CCDA found in CCDA_Store");
 		foundInStore = true;
 	} else {	
@@ -116,14 +120,14 @@ async function searchInLocal(latest_CCDA_obj) {
 		ret_obj.abs_file_path = searchInDir(file, ccda_cache_path);
 	}
 	
-	if (ret_obj.abs_file_path !== null) 
+	if (ret_obj.abs_file_path != null) 
 		console.log(ls.success, "CCDA found in CCDA_Cache");
 	else
 		console.log(ls.warning, "CCDA not found in CCDA_Cache");
 
 	
 	// 3. hashCheck
-	if (ret_obj.abs_file_path !== null) 
+	if (ret_obj.abs_file_path != null) 
 		if (foundInStore)
 			computed_hash = await computeFileHash(file, ccda_store_path);
 		else
@@ -157,7 +161,6 @@ function searchInDir(file, dir) {
 async function requestCCDATransfer(latest_CCDA_obj) {
 	console.log(ls.info,`Id of target_clinic: ${latest_CCDA_obj.ownerId}`);
 	
-	console.log("latest_ccda_obj", latest_CCDA_obj);
 	const target_patId = latest_CCDA_obj.patId;
 	const target_hash = latest_CCDA_obj.hash;
 	const target_clinic = latest_CCDA_obj.ownerId;
@@ -170,14 +173,16 @@ async function requestCCDATransfer(latest_CCDA_obj) {
 	console.log(ls.success,"Request logged on the blockchain");
 
 	let abs_path = await getFile(target_hash, target_clinic);
-	
-	if (abs_path === null) {
+
+	if ( !abs_path ) {
 		req_success = false;
 		err_msg = 'File requested from clinic was either missing OR corrupt';
 	}
 
 	await submitFinishTransferTransaction(target_patId, target_hash, target_clinic, StartTransferTimeId, req_success, err_msg);
-	return {abs_path, StartTransferTimeId};
+	
+	const ret_obj = {abs_path: abs_path, StartTransferTimeId: StartTransferTimeId};
+	return ret_obj;
 }
 
 async function getFile(target_hash, target_clinic) {

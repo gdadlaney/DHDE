@@ -55,12 +55,13 @@ function UploadFile(){
 function GetPatientInfo(){
 	console.log("Please enter patient information. Press enter to skip");
 	const query = {};
-	query.DocId = readlineSync.question("Enter Id of doctor: ");
-	query.DocName = readlineSync.question("Enter name of doctor: ");
 	query.FirstName = readlineSync.question("Enter first_name of patient: ");
 	query.LastName = readlineSync.question("Enter last_name of patient: ");
 	query.Country = readlineSync.question("Enter country of patient: ");
 	query.SSN = readlineSync.question("Enter ssn of patient: ");
+	query.DocId = readlineSync.question("Enter Id of doctor: ");
+	query.DocName = readlineSync.question("Enter name of doctor: ");
+	query.Reason = readlineSync.question("Enter Reason for Access: ");
 	
 	
 	// sending a get request with the query params
