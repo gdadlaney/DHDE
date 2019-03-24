@@ -87,7 +87,10 @@ async function handleCCDARequest(req, res) {
 		else
 			await submitLocalAccessTransaction(latest_CCDA_obj.patId, latest_CCDA_obj.hash, latest_CCDA_obj.ownerId, StartTransferTimeId, req.query['DocId'], req.query['DocName']);
 	}
+	else{
 
+		await submitLocalAccessTransaction(latest_CCDA_obj.patId, latest_CCDA_obj.hash, latest_CCDA_obj.ownerId, null, req.query['DocId'], req.query['DocName']);
+	}
 	if (abs_file_path !== null)
 		res.sendFile(abs_file_path);				// handle callback
 	else
@@ -260,10 +263,12 @@ async function handleCCDATransfer(req, res) {
 }
 
 async function submitLocalAccessTransaction(patId, hash, owner_id, start_timestamp, docId, docName) {
+
 	try {
+		if(!start_timestamp){
+			start_timestamp = new Date();
+		}
 		let TransactionSubmit = require('composer-cli').Transaction.Submit;
-		date = new Date();
-		date = date.toISOString();
 		
 		let options = {
 			card: 'admin@ccda-transfer',
