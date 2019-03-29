@@ -14,7 +14,7 @@ else
 //export all env variables from one file and require any wherever needed
 module.exports = {
 	HIE_IP: hie_ip,
-	port: process.env.PORT,
+	PORT: process.env.PORT,
 	EHR_PORT: process.env.EHR_PORT,
 	CLINIC_ID: process.env.CLINIC_ID,
 	ehr_id: process.env.EHR_ID,

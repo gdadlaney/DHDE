@@ -81,6 +81,7 @@
         padding: 8px 18px;
         text-decoration: none;
         text-transform: uppercase;
+        margin-top: 10px;
       }
       .form-style-8 input[type="button"]:hover, 
       .form-style-8 input[type="submit"]:hover {
@@ -92,14 +93,20 @@
   <body>
     <div class="form-style-8">
       <h2>Request</h2>
-      <form http://<%= network_ip %>:3001/requestCCDA method="GET">
+      <form action="http://<%= network_ip %>:<%= network_ehr_port %>/requestCCDA" method="GET" style="margin-bottom:0">
         <input type="text" name="FirstName" placeholder="First Name" />
         <input type="text" name="LastName" placeholder="Last Name" />
         <input type="text" name="Country" placeholder="Country" />
         <input type="text" name="SSN" placeholder="SSN" />
         <input type="text" name="DOB" placeholder="DOB" />
+
+        <input type="text" name="DocId" placeholder="Doctor Id" />
+        <input type="text" name="DocName" placeholder="Doctor Name" />
+        <input type="text" name="Reason" placeholder="Reason for Access" />
         <!-- <input type="button" value="Query" /> -->
-        <input type="submit" value="Query" />
+        <center>
+          <input type="submit" value="Submit" />
+        </center>
       </form>
     </div>
   

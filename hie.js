@@ -1,4 +1,4 @@
-/**Enter file description here */
+	/**Enter file description here */
 
 /**Importing modules */
 
@@ -37,7 +37,7 @@ const { mysql_connect } = require('./mysql_connect');
 /**Environment variables */
 const {
 	HIE_IP,
-	port,
+	PORT,
 	CLINIC_ID,
 	sql_user,
 	sql_pass,
@@ -88,11 +88,11 @@ async function handleCCDARequest(req, res) {
 			console.log(ls.error,"requestCCDATransfer() failed in some uncertain way!!! ");		// this should never fire - put in catch
 		else {
 			abs_file_path = local_abs_file_path
-			await submitLocalAccessTransaction(latest_CCDA_obj.patId, latest_CCDA_obj.hash, latest_CCDA_obj.ownerId, StartTransferTimeId, req.query['DocId'], req.query['DocName']);
+			await submitLocalAccessTransaction(latest_CCDA_obj.patId, latest_CCDA_obj.hash, latest_CCDA_obj.ownerId, StartTransferTimeId, req.query['DocId'], req.query['DocName'], req.query['Reason']);
 		}
 	} else {
 		// Found in cache
-		await submitLocalAccessTransaction(latest_CCDA_obj.patId, latest_CCDA_obj.hash, latest_CCDA_obj.ownerId, null, req.query['DocId'], req.query['DocName']);
+		await submitLocalAccessTransaction(latest_CCDA_obj.patId, latest_CCDA_obj.hash, latest_CCDA_obj.ownerId, null, req.query['DocId'], req.query['DocName'], req.query['Reason']);
 	}
 
 	if ( abs_file_path != null)
@@ -193,7 +193,7 @@ async function getFile(target_hash, target_clinic) {
 	let target_clinic_ip = rows[0].Clinic_IP;
 	// if rows[1] exists, throw an err
 
-	const base_url = `http://${target_clinic_ip}:${port}`;
+	const base_url = `http://${target_clinic_ip}:${PORT}`;
 
 	const url = base_url + `/${target_clinic}/api/documents/`;
 	const get_url = url + `?hash=${target_hash}`;				// use route params instead of query params
@@ -267,12 +267,19 @@ async function handleCCDATransfer(req, res) {
 	}
 }
 
-async function submitLocalAccessTransaction(patId, hash, owner_id, start_timestamp, docId, docName) {
+async function submitLocalAccessTransaction(patId, hash, owner_id, start_timestamp, docId, docName, reason) {
 
 	try {
 		if(!start_timestamp){
 			start_timestamp = new Date();
 		}
+		if (docId === undefined)
+			docId = "";
+		if (docName === undefined)
+			docName = "";
+		if (reason === undefined)
+			reason = "";
+		
 		let TransactionSubmit = require('composer-cli').Transaction.Submit;
 		
 		let options = {
@@ -287,7 +294,7 @@ async function submitLocalAccessTransaction(patId, hash, owner_id, start_timesta
 				"docId": "${docId}",
 				"docName": "${docName}"
 			}`
-			
+			// ,"reason":	"${reason}"
 		};
 		TransactionSubmit.handler(options);
 	} catch (error) {
@@ -378,7 +385,7 @@ async function createEMPIQuery(req, res) {
 	let sql = "SELECT * FROM `EMPI` WHERE ";
 	let i = 1;
 	for (const key in query) {
-		if (key != 'DocId' && key != 'DocName') {
+		if (key != 'DocId' && key != 'DocName' && key != 'Reason') {
 			if (query[key]) {
 				if (i != 1) {
 					sql += "AND "
@@ -657,7 +664,7 @@ app.get('/PatientCCDAAudit',PatientCCDAAudit);
 
 
 
-// app.listen(port, () => console.log(`Listening on port ${port}...`));
+// app.listen(PORT, () => console.log(`Listening on port ${PORT}...`));
 const http = require('http');
 const server = http.createServer(app);
-server.listen(port, HIE_IP, () => console.log(`${CLINIC_ID} is listening on ${HIE_IP}:${port} ...`));
+server.listen(PORT, HIE_IP, () => console.log(`${CLINIC_ID} is listening on ${HIE_IP}:${PORT} ...`));

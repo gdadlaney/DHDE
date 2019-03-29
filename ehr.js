@@ -11,7 +11,7 @@ var Table = require('cli-table');
 const ls = require('log-symbols');
 
 const {
-	port,
+	PORT,
 	ehr_id,
 	HIE_IP,
 	CLINIC_ID,
@@ -20,7 +20,7 @@ const {
 
 const ehr_store_dir = "./ehr_store";
 const ehr_ret_dir = path.join(ehr_store_dir, 'from_blockchain');
-const url = `http://${HIE_IP}:${port}/api/documents`;
+const url = `http://${HIE_IP}:${PORT}/api/documents`;
 
 
 /**Menu
@@ -41,10 +41,10 @@ function UploadFile(){
 				console.log(err_msg);
 			}
 			else {
-					const res_obj = JSON.parse(body);
-					console.log(ls.success, "CCDA successfully uploaded to HIE");
-					console.log(ls.info, "Asset created on blockchain is:")
-					console.log(res_obj);
+				const res_obj = JSON.parse(body);
+				console.log(ls.success, "CCDA successfully uploaded to HIE");
+				console.log(ls.info, "Asset created on blockchain is:")
+				console.log(res_obj);
 			}
 		}
 	});
@@ -117,11 +117,24 @@ const app = express();
 
 // to refactor
 app.set('view engine', 'ejs');
+
+app.get('/uploadCCDA', (req, res) => {
+	let render_obj = {};
+	render_obj.network_port = PORT;
+	if (HIE_IP === '0.0.0.0')							// In production, 1 clinic per PC				
+		render_obj.network_ip = '192.168.31.131';		// send the IP from the DNS, e.g - 192.168.31.131	////
+	else												// 127.x.x.x
+		render_obj.network_ip = HIE_IP;
+
+	res.render('uploadCCDA', render_obj);
+});
+
 app.get('/requestCCDA?', (req, res) => {
 	// if no query params, then display the form
 	if ( Object.keys(req.query).length === 0 ) {
 		// Dynamic IP in the ejs template -
 		let render_obj = {};
+		render_obj.network_ehr_port = EHR_PORT;
 		if (HIE_IP === '0.0.0.0')							// In production, 1 clinic per PC				
 			render_obj.network_ip = '192.168.31.131';		// send the IP from the DNS, e.g - 192.168.31.131	//////
 		else												// 127.x.x.x
