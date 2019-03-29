@@ -37,8 +37,8 @@
         </languageCommunication>
       </patient>
       <providerOrganization classCode="ORG" determinerCode="INSTANCE">
-        <id root="SHO" />
-        <name>Sasoon Hospital</name>
+        <id root="PHO" />
+        <name>Poona Hospital</name>
         <telecom value="tel:(919)650-2819" use="WP" />
         <addr>
           <streetAddressLine>15200 Weston Parkway</streetAddressLine>

@@ -1,4 +1,4 @@
-/**Enter file description here */
+	/**Enter file description here */
 
 /**Importing modules */
 
@@ -11,6 +11,22 @@ const busboy = require('connect-busboy');
 var bodyParser = require('body-parser');
 const ls = require('log-symbols');
 
+
+/*Auditing the Historian*/
+const prettyoutput = require('prettyoutput')
+
+/*
+	UI
+*/
+// const layout = require('express-layout')
+// app.set('views', path.join(__dirname, 'views'))
+// const middleware = [
+//   layout(),
+//   express.static(path.join(__dirname, 'public')),
+// ]
+// app.use(middleware)
+
+
 /**Custom modules
  * connect.js : Business network connection and details.
  * mysql_connect.js : Mysql connection
@@ -21,13 +37,13 @@ const { mysql_connect } = require('./mysql_connect');
 /**Environment variables */
 const {
 	HIE_IP,
-	port,
+	PORT,
 	CLINIC_ID,
 	sql_user,
 	sql_pass,
 	sql_db,
 } = require('./config');
-const dir_path = './ccda_store';			// remove
+
 const ccda_store_path = './ccda_store';
 const ccda_cache_path = './ccda_cache';
 
@@ -53,7 +69,7 @@ async function handleCCDARequest(req, res) {
 
 	console.log(ls.info, `Fetching the latest CCDA of ${pat_id} from the blockchain`);
 	let latest_CCDA_obj = await getLatestCCDA(pat_id);						// try-catch may be better 
-	if (latest_CCDA_obj === null) {
+	if ( !latest_CCDA_obj ) {
 		console.log(ls.err, "No records found on the blockchain for the given patient");
 		res.status(404).send("No records found on the blockchain for the given patient");
 		return;			////////
@@ -64,15 +80,22 @@ async function handleCCDARequest(req, res) {
 	let abs_file_path = ret_obj.abs_file_path;
 	if (ret_obj.hashVerified === false) {
 		console.log(ls.info, "CCDA not found locally. CCDA needs to be requested from another clinic"); 					// file not found
-		abs_file_path = await requestCCDATransfer(latest_CCDA_obj);
-	
-		if (abs_file_path === null) 
+		const ret_obj = await requestCCDATransfer(latest_CCDA_obj);
+		local_abs_file_path = ret_obj.abs_path;
+		StartTransferTimeId = ret_obj.StartTransferTimeId;
+
+		if ( !local_abs_file_path ) 
 			console.log(ls.error,"requestCCDATransfer() failed in some uncertain way!!! ");		// this should never fire - put in catch
-		else
-			await submitLocalAccessTransaction(latest_CCDA_obj.hash, CLINIC_ID, req.query['DocId'], req.query['DocName']);
+		else {
+			abs_file_path = local_abs_file_path
+			await submitLocalAccessTransaction(latest_CCDA_obj.patId, latest_CCDA_obj.hash, latest_CCDA_obj.ownerId, StartTransferTimeId, req.query['DocId'], req.query['DocName'], req.query['Reason']);
+		}
+	} else {
+		// Found in cache
+		await submitLocalAccessTransaction(latest_CCDA_obj.patId, latest_CCDA_obj.hash, latest_CCDA_obj.ownerId, null, req.query['DocId'], req.query['DocName'], req.query['Reason']);
 	}
 
-	if (abs_file_path !== null)
+	if ( abs_file_path != null)
 		res.sendFile(abs_file_path);				// handle callback
 	else
 		res.status(404).send("File not found OR was corrupt");
@@ -80,13 +103,16 @@ async function handleCCDARequest(req, res) {
 
 async function searchInLocal(latest_CCDA_obj) {
 	const file = latest_CCDA_obj.hash+".xml";
-	let ret_obj = { abs_file_path: null, hashVerified: false }
+	let ret_obj = { abs_file_path: null, hashVerified: false };
+	let foundInStore = false;
+	let computed_hash = null;
 
 	// 1. searchInStore
 	ret_obj.abs_file_path = searchInDir(file, ccda_store_path);
 	
-	if (ret_obj.abs_file_path !== null) {
+	if (ret_obj.abs_file_path != null) {
 		console.log(ls.success, "CCDA found in CCDA_Store");
+		foundInStore = true;
 	} else {	
 		console.log(ls.warning, "CCDA not found in CCDA_Store");
 
@@ -94,17 +120,21 @@ async function searchInLocal(latest_CCDA_obj) {
 		ret_obj.abs_file_path = searchInDir(file, ccda_cache_path);
 	}
 	
-	if (ret_obj.abs_file_path !== null) 
+	if (ret_obj.abs_file_path != null) 
 		console.log(ls.success, "CCDA found in CCDA_Cache");
 	else
 		console.log(ls.warning, "CCDA not found in CCDA_Cache");
 
 	
 	// 3. hashCheck
-	if (ret_obj.abs_file_path !== null) 
-		const computed_hash = await computeFileHash(file, ccda_cache_path)
+	if (ret_obj.abs_file_path != null) 
+		if (foundInStore)
+			computed_hash = await computeFileHash(file, ccda_store_path);
+		else
+			computed_hash = await computeFileHash(file, ccda_cache_path);
 	if (latest_CCDA_obj.hash != computed_hash) {
-		console.log(ls.error, "Hash Check Failed");
+		console.log(ls.warning, "Hash Check Failed");
+		// delete file
 		ret_obj.hashVerified = false;
 	}
 	else {
@@ -116,34 +146,43 @@ async function searchInLocal(latest_CCDA_obj) {
 }
 
 function searchInDir(file, dir) {
-	// console.log("** searchInDir");
 	let search_path = path.join(__dirname, dir, file);
 	try {
 		fs.statSync(search_path);			// make async & wrap in Promises?
 		return search_path;
 	} catch (err) {
-		// console.log(err);
-		if (err.code === 'ENOENT') {		// file not found
-			return null;			
-		}
+		if (err.code === 'ENOENT')		// file not found
+			return null;		
+		else 
+			console.error(err);	
 	}
 }
 
 async function requestCCDATransfer(latest_CCDA_obj) {
 	console.log(ls.info,`Id of target_clinic: ${latest_CCDA_obj.ownerId}`);
 	
-	let target_hash = latest_CCDA_obj.hash;
-	let target_clinic = latest_CCDA_obj.ownerId;
+	const target_patId = latest_CCDA_obj.patId;
+	const target_hash = latest_CCDA_obj.hash;
+	const target_clinic = latest_CCDA_obj.ownerId;
+	let req_success = true;
+	let err_msg = '';
 
 	console.log(`Requesting: ${latest_CCDA_obj.ownerId} for CCDA transfer`);
-	await submitStartTransferTransaction(target_hash, target_clinic);
-	console.log(ls.success, "Request logged on the blockchain");
+	let StartTransferTimeId = await submitStartTransferTransaction(target_patId, target_hash, target_clinic);
+	// let StartTransferTimeId = new Date().toISOString()
+	console.log(ls.success,"Request logged on the blockchain");
 
 	let abs_path = await getFile(target_hash, target_clinic);
-	// if abs_path === null -> Ani's code
 
-	await submitFinishTransferTransaction();
-	return abs_path;
+	if ( !abs_path ) {
+		req_success = false;
+		err_msg = 'File requested from clinic was either missing OR corrupt';
+	}
+
+	await submitFinishTransferTransaction(target_patId, target_hash, target_clinic, StartTransferTimeId, req_success, err_msg);
+	
+	const ret_obj = {abs_path: abs_path, StartTransferTimeId: StartTransferTimeId};
+	return ret_obj;
 }
 
 async function getFile(target_hash, target_clinic) {
@@ -154,10 +193,12 @@ async function getFile(target_hash, target_clinic) {
 	let target_clinic_ip = rows[0].Clinic_IP;
 	// if rows[1] exists, throw an err
 
-	const base_url = `http://${target_clinic_ip}:${port}`;
+	const base_url = `http://${target_clinic_ip}:${PORT}`;
 
 	const url = base_url + `/${target_clinic}/api/documents/`;
 	const get_url = url + `?hash=${target_hash}`;				// use route params instead of query params
+
+	console.log(get_url)
 
 	return new Promise((resolve, reject) => {
 		request.get(get_url, function(err, resp, body) {
@@ -202,12 +243,12 @@ async function handleCCDATransfer(req, res) {
 
 	// req.query is a dict with all query params
 	const requested_hash = req.query['hash'];
-	const hash_path = path.join(__dirname, dir_path, requested_hash+".xml");
+	const hash_path = path.join(__dirname, ccda_store_path, requested_hash+".xml");
 
 	try {
 		fs.statSync(hash_path);		// using statSync instead of readdirSync, as we just need to check if file is present.
 		
-		let hash_found = await computeFileHash(`${requested_hash}.xml`, dir_path);
+		let hash_found = await computeFileHash(`${requested_hash}.xml`, ccda_store_path);
 		if (requested_hash != hash_found) {
 			console.log("Hash Check Failed");
 			res.status(409).send("Hash Check Failed");
@@ -224,21 +265,36 @@ async function handleCCDATransfer(req, res) {
 		else
 			res.status(400).send(err);			// 400: Bad Request
 	}
-};
+}
 
-async function submitLocalAccessTransaction(hash, requesterId, docId, docName) {
+async function submitLocalAccessTransaction(patId, hash, owner_id, start_timestamp, docId, docName, reason) {
+
 	try {
+		if(!start_timestamp){
+			start_timestamp = new Date();
+		}
+		if (docId === undefined)
+			docId = "";
+		if (docName === undefined)
+			docName = "";
+		if (reason === undefined)
+			reason = "";
+		
 		let TransactionSubmit = require('composer-cli').Transaction.Submit;
 		
 		let options = {
 			card: 'admin@ccda-transfer',
 			data: `{
 				"$class": "org.transfer.LocalAccess",
+				"patId": "resource:org.transfer.Patient#${patId}",
 				"hash": "resource:org.transfer.CCDA#${hash}",
-				"requesterId": "resource:org.transfer.Clinic#${requesterId}",
+				"requesterId": "resource:org.transfer.Clinic#${CLINIC_ID}",
+				"providerId": "resource:org.transfer.Clinic#${owner_id}",
+				"StartTransId": "${start_timestamp}",
 				"docId": "${docId}",
 				"docName": "${docName}"
 			}`
+			// ,"reason":	"${reason}"
 		};
 		TransactionSubmit.handler(options);
 	} catch (error) {
@@ -246,35 +302,71 @@ async function submitLocalAccessTransaction(hash, requesterId, docId, docName) {
 	}
 }
 
-async function submitStartTransferTransaction(hash, owner_id) {
+async function submitStartTransferTransaction(patId, hash, owner_id) {
+	let my_date = new Date();
+	
 	try {
 		let TransactionSubmit = require('composer-cli').Transaction.Submit;
+		
+		my_date = my_date.toISOString();
 		
 		let options = {
 			card: 'admin@ccda-transfer',
 			data: `{
 				"$class": "org.transfer.StartTransfer",
+				"patId": "resource:org.transfer.Patient#${patId}",
 				"hash": "resource:org.transfer.CCDA#${hash}",
 				"requesterId": "resource:org.transfer.Clinic#${CLINIC_ID}",
-				"providerId": "resource:org.transfer.Clinic#${owner_id}"
-			}`
+				"providerId": "resource:org.transfer.Clinic#${owner_id}",
+				"timestampId": "${my_date}"
+			}`,
 		};
+		// console.log("start: ", options)
 		TransactionSubmit.handler(options);
 	} catch (error) {
 		console.error('Error in submitting Final Transfer transaction:', error);
 	}
+
+	return my_date;
 }
 
-async function submitFinishTransferTransaction() {
+async function submitFinishTransferTransaction(patId, hash, owner_id, start_timestamp, success_flag, err_msg) {
+	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
+	
 	try {
 		let TransactionSubmit = require('composer-cli').Transaction.Submit;
 		
+		// Method 1. Query the id, using timestamp. Timing issues.
+		//     console.log(date)
+     
+    //     let q1 = await bizNetworkConnection.buildQuery(
+    //         `SELECT org.hyperledger.composer.system.HistorianRecord
+    //           WHERE (transactionType == 'org.transfer.StartTransfer' AND transactionTimestamp == '${date}')`
+    //     );      
+		// let record = await bizNetworkConnection.query(q1);
+		// // if (record is empty) throw error
+					
+		// Method 2. Make the timestamp the common id
+		// start_timestamp acts as a link between all 3 transcations
+
+		if (!err_msg)				// if undefined or null
+			err_msg = null		// json only accepts null
+
 		let options = {
 			card: 'admin@ccda-transfer',
 			data: `{
-				"$class": "org.transfer.FinishTransfer" 
+				"$class": "org.transfer.FinishTransfer",
+				"patId": "resource:org.transfer.Patient#${patId}",
+				"hash": "resource:org.transfer.CCDA#${hash}",
+				"requesterId": "resource:org.transfer.Clinic#${CLINIC_ID}",
+				"providerId": "resource:org.transfer.Clinic#${owner_id}",
+				"StartTransId": "${start_timestamp}",
+				"Success": ${success_flag},
+				"ErrorMessage": "${err_msg}"
 			}`
 		};
+
+		// console.log("finish: ", options)
 		TransactionSubmit.handler(options);
 	} catch (error) {
 		console.error('Error in submitting Final Transfer transaction:', error);
@@ -293,7 +385,7 @@ async function createEMPIQuery(req, res) {
 	let sql = "SELECT * FROM `EMPI` WHERE ";
 	let i = 1;
 	for (const key in query) {
-		if (key != 'DocId' && key != 'DocName') {
+		if (key != 'DocId' && key != 'DocName' && key != 'Reason') {
 			if (query[key]) {
 				if (i != 1) {
 					sql += "AND "
@@ -359,11 +451,11 @@ async function getLatestCCDA(pat_id) {
 	// Fetching required fields
 	const asset_obj = {
 		hash: max.hash,
-		ownerId: max.ownerId.$identifier,
-		patId: max.patId.$identifier,			// Identifier used as Relationships are returned. Resolving queries is not possible w/o rest API.
+		ownerId: max.ownerId.$identifier,	// Identifier used as Relationships are returned. Resolving queries is not possible w/o rest API.
+		patId: max.patId.$identifier,	
 		lastUpdate: max.lastUpdate,
 	};
-	console.log(ls.success,"Latest CCDA found: ");
+	console.log(ls.success, "Latest CCDA found: ");
 	console.log(asset_obj);
 
 	return asset_obj;
@@ -408,19 +500,14 @@ async function addCCDA(block_data) {
 		let factory = businessNetworkDefinition.getFactory();
 
 		let CCDA_Registry = await bizNetworkConnection.getAssetRegistry('org.transfer.CCDA');
-
+		
 		// if asset exists, delete it			////// Just for the demo, don't deploy to production
-
-		console.log("Adding CCDA asset to the blockchain");
 		let assetExists = await CCDA_Registry.exists(hash);
 		if (assetExists) {
 			console.log("Asset already exists, removing it");
 			await CCDA_Registry.remove(hash);
-			console.log("Asset removed");
-			console.log("Adding new CCDA asset");
-
 		}
-		// doesn't work when Asset does not exist.
+
 		let newCCDA = factory.newResource('org.transfer', 'CCDA', hash);
 		newCCDA.patId = factory.newRelationship('org.transfer', 'Patient', patId);
 		newCCDA.ownerId = factory.newRelationship('org.transfer', 'Clinic', clinicId);
@@ -428,13 +515,10 @@ async function addCCDA(block_data) {
 		await CCDA_Registry.add(newCCDA);
 		console.log("CCDA asset successfully added to the blockchain");
 
-		// console.log("Block Data " + block_data);
-		// console.log("Hash of the file " + hash);
 		return block_data;
 		
 	} catch (error) {
-		console.log('* uh-oh', error);
-		// this.log.error(METHOD, 'uh-oh', error);
+		console.error('uh-oh: ', error);
 	}
 }
 
@@ -510,11 +594,77 @@ async function computeFileHash(file, dir) {
 }
 app.post('/api/documents', handleUploadCCDA);
 
+async function AddAssetaudit(req,res){
+	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
+	// let historian = await bizNetworkConnection.getHistorian();
+	// let historianRecords = await historian.getAll();
+
+    
+	/*
+	Querying all StartTransfer transactions
+	*/
+	// let hname = "CHO";
+ //    let q1 = bizNetworkConnection.buildQuery(`SELECT org.transfer.StartTransfer WHERE (requesterId=='resource:org.transfer.Clinic#SHO')`);   
+
+ // 	let ST = await bizNetworkConnection.query(q1);
+ //    // console.log(ST);
+ //    console.log("Hash of CCDA that was requested:"+ST[0].hash.$identifier);
+ //    console.log("Requesting Hospital:"+ST[0].requesterId.$identifier);
+ //    console.log("Providing Hospital:"+ST[0].providerId.$identifier);
+
+    /*
+		Do same for FinishTransfer
+    */
+
+    
+    /*
+	Querying all the AddAsset Trasactions
+    */
+    let q2 = bizNetworkConnection.buildQuery('SELECT org.hyperledger.composer.system.AddAsset');   
+
+ 	let AA = await bizNetworkConnection.query(q2);
+ 	console.log(AA.length);
+ 	for(i=0;i<AA.length;i++){
+ 		console.log(`*************RECORD ${i}*************`);
+	    console.log("Hash:"+AA[i].resources[0].hash);
+	    console.log("Owner:"+AA[i].resources[0].ownerId.$identifier);
+	    console.log("Patient:"+AA[i].resources[0].patId.$identifier);
+	    console.log(`-------------------------------------`);
+ 	}
+   
+    // let q3 = bizNetworkConnection.buildQuery(`SELECT org.transfer.StartTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);   
+
+
+    console.log(typeof AA);
+    res.send(AA);
+}
+app.get('/AddAsset',AddAssetaudit);
+
+async function PatientCCDAAudit(req,res){
+	
+	let pat_id = await createEMPIQuery(req, res);
+	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
+
+	let query = bizNetworkConnection.buildQuery(`SELECT org.transfer.CCDA WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
+	
+	// wrap query in try catch
+	let assets = await bizNetworkConnection.query(query);
+
+	
+	if (assets.length == 0) {
+		console.log(ls.error, "CCDA not found in blockchain");
+		return null;
+	}
+
+		res.send(assets);
+}
+app.get('/PatientCCDAAudit',PatientCCDAAudit);
+
 // Creation of EMPI
 
 
 
-// app.listen(port, () => console.log(`Listening on port ${port}...`));
+// app.listen(PORT, () => console.log(`Listening on port ${PORT}...`));
 const http = require('http');
 const server = http.createServer(app);
-server.listen(port, HIE_IP, () => console.log(`${CLINIC_ID} is listening on ${HIE_IP}:${port} ...`));
+server.listen(PORT, HIE_IP, () => console.log(`${CLINIC_ID} is listening on ${HIE_IP}:${PORT} ...`));

@@ -7,9 +7,11 @@ const fs = require('fs');
 const path = require('path');
 const readlineSync = require('readline-sync');
 var menu = require('node-menu');
+var Table = require('cli-table');
+const ls = require('log-symbols');
 
 const {
-	port,
+	PORT,
 	ehr_id,
 	HIE_IP,
 	CLINIC_ID,
@@ -18,7 +20,7 @@ const {
 
 const ehr_store_dir = "./ehr_store";
 const ehr_ret_dir = path.join(ehr_store_dir, 'from_blockchain');
-const url = `http://${HIE_IP}:${port}/api/documents`;
+const url = `http://${HIE_IP}:${PORT}/api/documents`;
 
 
 /**Menu
@@ -33,36 +35,35 @@ function UploadFile(){
 			console.log(`Error while sending post request: ${err}`);
 		}
 		else {
-				if (resp.statusCode === 400	|| resp.statusCode === 422) {
-					const err_msg = body;
-					console.log(resp.statusCode + "Error in received response");
-					console.log(err_msg);
-				}
-				else {
-						const res_obj = JSON.parse(body);
-						console.log(res_obj);
-				}
+			if (resp.statusCode === 400	|| resp.statusCode === 422) {
+				const err_msg = body;
+				console.log(resp.statusCode + "Error in received response");
+				console.log(err_msg);
+			}
+			else {
+				const res_obj = JSON.parse(body);
+				console.log(ls.success, "CCDA successfully uploaded to HIE");
+				console.log(ls.info, "Asset created on blockchain is:")
+				console.log(res_obj);
+			}
 		}
 	});
 
 	const form = req.form();
 	form.append('file', fs.createReadStream(filepath));
-}
-
+}	
 function GetPatientInfo(){
 	console.log("Please enter patient information. Press enter to skip");
 	const query = {};
-	query.DocId = readlineSync.question("Enter Id of doctor: ");
-	query.DocName = readlineSync.question("Enter name of doctor: ");
 	query.FirstName = readlineSync.question("Enter first_name of patient: ");
 	query.LastName = readlineSync.question("Enter last_name of patient: ");
 	query.Country = readlineSync.question("Enter country of patient: ");
 	query.SSN = readlineSync.question("Enter ssn of patient: ");
+	query.DocId = readlineSync.question("Enter Id of doctor: ");
+	query.DocName = readlineSync.question("Enter name of doctor: ");
+	query.Reason = readlineSync.question("Enter Reason for Access: ");
 	
-	// const query = {FirstName: 'Adam', LastName: 'Hamilton', Country: 'US', };
-
-	// To Refactor
-	// request.get(get_url, function(err, resp, body) {
+	
 	// sending a get request with the query params
 	request({url:url, qs: query}, function(err, resp, body) {
 		if (err)
@@ -93,7 +94,7 @@ function GetPatientInfo(){
 }	
 
 menu.customHeader(function() {
-    process.stdout.write("\nDATA EXCHANGE PLATFORM\n");
+    process.stdout.write(`\nDATA EXCHANGE PLATFORM for ${CLINIC_ID}\n`);
 })
 menu.customPrompt(function() {
     process.stdout.write("Enter choice: \n");
@@ -116,11 +117,24 @@ const app = express();
 
 // to refactor
 app.set('view engine', 'ejs');
+
+app.get('/uploadCCDA', (req, res) => {
+	let render_obj = {};
+	render_obj.network_port = PORT;
+	if (HIE_IP === '0.0.0.0')							// In production, 1 clinic per PC				
+		render_obj.network_ip = '192.168.31.131';		// send the IP from the DNS, e.g - 192.168.31.131	////
+	else												// 127.x.x.x
+		render_obj.network_ip = HIE_IP;
+
+	res.render('uploadCCDA', render_obj);
+});
+
 app.get('/requestCCDA?', (req, res) => {
 	// if no query params, then display the form
 	if ( Object.keys(req.query).length === 0 ) {
 		// Dynamic IP in the ejs template -
 		let render_obj = {};
+		render_obj.network_ehr_port = EHR_PORT;
 		if (HIE_IP === '0.0.0.0')							// In production, 1 clinic per PC				
 			render_obj.network_ip = '192.168.31.131';		// send the IP from the DNS, e.g - 192.168.31.131	//////
 		else												// 127.x.x.x
@@ -170,7 +184,7 @@ app.get('/requestCCDA?', (req, res) => {
 							console.log(err);
 							res.send(err);
 						} else {
-							console.log(`Successfully recieved requested data & wrote file: ${pat_name}.xml to disk`);
+							console.log(ls.success, `Successfully recieved requested data & wrote file: ${pat_name}.xml to disk`);
 							// console.log(body);
 							// res.send(body);						///////////// xml
 							const options = {}; // = { headers: { 'Content-Type': 'text/xml' } };
