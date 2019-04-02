@@ -6,7 +6,7 @@ var menu = require('node-menu');
 var Table = require('cli-table');
 
 const {
-	port,
+	PORT,
 	ehr_id,
 	HIE_IP,
 	CLINIC_ID,
@@ -15,10 +15,10 @@ const {
 
 const ehr_store_dir = "./ehr_store";
 const ehr_ret_dir = path.join(ehr_store_dir, 'from_blockchain');
-const url = `http://${HIE_IP}:${port}/api/documents`;
+const url = `http://${HIE_IP}:${PORT}/api/documents`;
 
 function AddAssetaudit(){
-	request.get(`http://${HIE_IP}:${port}/AddAsset`,(err,resp)=>{
+	request.get(`http://${HIE_IP}:${PORT}/AddAsset`,(err,resp)=>{
 		if(err){
 			console.log(err);
 		}
@@ -52,7 +52,7 @@ function PatientCCDAAudit(){
 	
 	
 	// sending a get request with the query params
-	request({url:`http://${HIE_IP}:${port}/PatientCCDAAudit`, qs: query}, function(err, resp, body) {
+	request({url:`http://${HIE_IP}:${PORT}/PatientCCDAAudit`, qs: query}, function(err, resp, body) {
 		if (err)
 			console.log(`Error: ${err}`);
 		else {
