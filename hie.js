@@ -640,7 +640,7 @@ async function AddAssetaudit(req,res){
 }
 app.get('/AddAsset',AddAssetaudit);
 
-async function PatientCCDAAudit(req,res){
+async function PatientCCDAUploadAudit(req,res){
 	
 	let pat_id = await createEMPIQuery(req, res);
 	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
@@ -655,10 +655,27 @@ async function PatientCCDAAudit(req,res){
 		console.log(ls.error, "CCDA not found in blockchain");
 		return null;
 	}
-
 		res.send(assets);
 }
-app.get('/PatientCCDAAudit',PatientCCDAAudit);
+app.get('/PatientCCDAUploadAudit',PatientCCDAUploadAudit);
+
+async function PatientAllCCDARequestAudit(req,res){
+	
+	let pat_id = await createEMPIQuery(req, res);
+	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
+
+	let query = bizNetworkConnection.buildQuery(`SELECT org.transfer.FinishTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
+	
+	// wrap query in try catch
+	let assets = await bizNetworkConnection.query(query);
+	
+	if (assets.length == 0) {
+		console.log(ls.error, "CCDA not found in blockchain");
+		return null;
+	}
+		res.send(assets);
+}
+app.get('/PatientAllCCDARequestAudit',PatientAllCCDARequestAudit);
 
 // Creation of EMPI
 

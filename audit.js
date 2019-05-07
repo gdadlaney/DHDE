@@ -42,7 +42,7 @@ function AddAssetaudit(){
 		}
 	});
 }
-function PatientCCDAAudit(){
+function PatientCCDAUploadAudit(){
 	console.log("Please enter patient information. Press enter to skip");
 	const query = {};
 	query.FirstName = readlineSync.question("Enter first_name of patient: ");
@@ -52,7 +52,7 @@ function PatientCCDAAudit(){
 	
 	
 	// sending a get request with the query params
-	request({url:`http://${HIE_IP}:${PORT}/PatientCCDAAudit`, qs: query}, function(err, resp, body) {
+	request({url:`http://${HIE_IP}:${PORT}/PatientCCDAUploadAudit`, qs: query}, function(err, resp, body) {
 		if (err)
 			console.log(`Error: ${err}`);
 		else {
@@ -77,7 +77,51 @@ function PatientCCDAAudit(){
 		}
 	});
 }
+function PatientAllCCDARequestAudit(){
+	console.log("Please enter patient information. Press enter to skip");
+	const query = {};
+	query.FirstName = readlineSync.question("Enter first_name of patient: ");
+	query.LastName = readlineSync.question("Enter last_name of patient: ");
+	query.Country = readlineSync.question("Enter country of patient: ");
+	query.SSN = readlineSync.question("Enter ssn of patient: ");
 
+
+	request({url:`http://${HIE_IP}:${PORT}/PatientAllCCDARequestAudit`, qs: query}, function(err, resp, body) {
+		if (err)
+			console.log(`Error: ${err}`);
+		else {
+			if (resp.statusCode == 404 || resp.statusCode == 400 || resp.statusCode == 409 || resp.statusCode == 422)
+				console.log(body);
+			else {
+				let AA = JSON.parse(resp.body);
+				console.log(AA);
+				// var table = new Table({
+				//     head: ['requesterId','providerId','PatientId','TimeStamp','Hash','Success'],
+				//     colWidths:[10,10,10,40,70,10]
+				// });
+				for(i=0;i<AA.length;i++){
+					var j=i+1;
+				    console.log("---------------------"+"Record "+j+"--------------------------------------------");
+					let table_data = [];
+				    let requesterId = AA[i].requesterId;
+				    let providerId = AA[i].providerId;
+				    let patient_details = AA[i].patId;
+				    let success = AA[i].Success;
+				    console.log("Hash: ",AA[i].hash.substr(27));
+				    console.log("Requester: ",requesterId.substr(requesterId.length - 3));
+				    console.log("Provider: ",providerId.substr(providerId.length - 3));
+				    console.log("Pat_Id:",patient_details.substr(patient_details.length - 4));
+				    console.log("Success:",success);
+				    console.log("-----------------------------------------------------------------");
+				    // table.push([requesterId.substr(requesterId.length - 3),providerId.substr(providerId.length - 3),patient_details.substr(patient_details.length - 4),new Date(AA[i].timestamp),AA[i].hash],success);
+				    
+			 	}
+				// console.log(table.toString());
+			}
+		}
+	});
+	
+}
 
 
 menu.customHeader(function() {
@@ -93,8 +137,11 @@ menu.addDelimiter('-', 40, 'Main Menu')
 	AddAssetaudit
 )
 .addItem(
-	'All CCDAs of a patient',
-	PatientCCDAAudit
+	'All CCDA uploads of a patient',
+	PatientCCDAUploadAudit
+).addItem(
+	'All requests of a patient data',
+	PatientAllCCDARequestAudit
 )
 .addDelimiter('*', 40)
 .start();
