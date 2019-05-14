@@ -197,6 +197,9 @@ app.get('/requestCCDA?', (req, res) => {
 	}
 });
 
-app.listen(EHR_PORT, () => console.log(`Clinic: ${CLINIC_ID} is listening on ${HIE_IP}:${EHR_PORT} ...`));
+// app.listen(EHR_PORT, () => console.log(`Clinic: ${CLINIC_ID} is listening on ${HIE_IP}:${EHR_PORT} ...`));
+const http = require('http');
+const server = http.createServer(app);
+server.listen(EHR_PORT, HIE_IP, () => console.log(`Client of clinic: ${CLINIC_ID} is listening on ${HIE_IP}:${EHR_PORT} ...`));
 
 app.use('/static', express.static('static'));		// Xsl file

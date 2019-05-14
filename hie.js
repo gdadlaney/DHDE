@@ -684,4 +684,4 @@ app.get('/PatientAllCCDARequestAudit',PatientAllCCDARequestAudit);
 // app.listen(PORT, () => console.log(`Listening on port ${PORT}...`));
 const http = require('http');
 const server = http.createServer(app);
-server.listen(PORT, HIE_IP, () => console.log(`${CLINIC_ID} is listening on ${HIE_IP}:${PORT} ...`));
+server.listen(PORT, HIE_IP, () => console.log(`Server of clinic: ${CLINIC_ID} is listening on ${HIE_IP}:${PORT} ...`));
