@@ -208,7 +208,7 @@ async function getFile(target_hash, target_clinic) {
 			}
 			else {
 				if (resp.statusCode == 404 || resp.statusCode == 400 || resp.statusCode == 409)
-					console.error(body);
+					console.error(ls.error, resp.statusCode+": ", body);
 				else {
 					const abs_path = path.join(__dirname, ccda_cache_path, target_hash+'.xml');
 					fs.writeFile(abs_path, body, function(err, data) {	// we shouldn't change the name of the file if the mrn isn't unique
@@ -261,7 +261,7 @@ async function handleCCDATransfer(req, res) {
 	catch (err) {
 		console.error('Error in file lookup: ', err);
 		if (err.code === 'ENOENT')
-			res.status(404).send(`File: ${hash_found+".xml"} does not exist in CCDA Store`);		// 404 : Not FOund
+			res.status(404).send(`File: ${requested_hash+".xml"} does not exist in CCDA Store`);		// 404 : Not FOund
 		else
 			res.status(400).send(err);			// 400: Bad Request
 	}
@@ -664,11 +664,25 @@ async function PatientAllCCDARequestAudit(req,res){
 	let pat_id = await createEMPIQuery(req, res);
 	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
 
-	let query = bizNetworkConnection.buildQuery(`SELECT org.transfer.FinishTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
+	// add contraint of ts
+	const query1 = bizNetworkConnection.buildQuery(`SELECT org.transfer.LocalAccess WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
+	const query2 = bizNetworkConnection.buildQuery(`SELECT org.transfer.StartTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
+	const query3 = bizNetworkConnection.buildQuery(`SELECT org.transfer.FinishTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);	
 	
 	// wrap query in try catch
-	let assets = await bizNetworkConnection.query(query);
-	
+	// const AccessedAssets = await bizNetworkConnection.query(query1);
+	// const StartedAssets = await bizNetworkConnection.query(query2);
+	const FinishedAssets = await bizNetworkConnection.query(query3);
+
+	// merge results
+	// let assets = AccessedAssets;
+	let assets = FinishedAssets;
+
+	console.log("***************");
+	console.log(assets);
+	console.log("***************");
+
+
 	if (assets.length == 0) {
 		console.log(ls.error, "CCDA not found in blockchain");
 		return null;
