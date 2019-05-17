@@ -27,17 +27,24 @@ const url = `http://${HIE_IP}:${PORT}/api/documents`;
  */
 function UploadFile(){
 	const filename = readlineSync.question("Enter name of the file to upload: ");
-
 	const filepath = `./ehr_store/${filename}`;
+	
+	const doc_id = readlineSync.question("Enter doctor id of the uploader: ");
+	let temp = readlineSync.question("Is this the final document to be shared (Y/N): ");
+	const is_final_document = (temp.toLowerCase() === 'y')? true : false;
 
-	let req = request.post(url, function handleResponse(err, resp, body) {
+	// Adding query params
+	temp = (is_final_document === true)? "true" : "false";		// booleans not allowed on query params, hence passing it as a string
+	const url_with_params = `${url}?doc_id=${doc_id}&is_final_document=${temp}`;
+
+	let req = request.post(url_with_params, function handleResponse(err, resp, body) {
 		if (err) {
 			console.log(`Error while sending post request: ${err}`);
 		}
 		else {
-			if (resp.statusCode === 400	|| resp.statusCode === 422) {
+			if (resp.statusCode === 400	|| resp.statusCode === 422 || resp.statusCode === 500 || resp.statusCode !== 200) {
 				const err_msg = body;
-				console.log(resp.statusCode + "Error in received response");
+				console.log(resp.statusCode + ": Error in received response");
 				console.log(err_msg);
 			}
 			else {
@@ -49,8 +56,14 @@ function UploadFile(){
 		}
 	});
 
+	console.log(doc_id, is_final_document);
+
 	const form = req.form();
 	form.append('file', fs.createReadStream(filepath));
+
+	// Not passing in form as it is tedious to handle in busboy, passing as query params
+	// form.append('doc_id', doc_id);
+	// form.append('is_final_document', is_final_document);			// boolean in json?
 }	
 function GetPatientInfo(){
 	console.log("Please enter patient information. Press enter to skip");
@@ -69,7 +82,7 @@ function GetPatientInfo(){
 		if (err)
 			console.log(`Error: ${err}`);
 		else {
-			if (resp.statusCode == 404 || resp.statusCode == 400 || resp.statusCode == 409)
+			if (resp.statusCode == 404 || resp.statusCode == 400 || resp.statusCode == 409 || resp.statusCode !== 200)
 				console.log(body);
 			else {
 				// To Refactor
@@ -162,7 +175,7 @@ app.get('/requestCCDA?', (req, res) => {
 				console.log(`Error: ${err}`);
 				res.send(`Error: ${err}`);
 			} else {
-				if (resp.statusCode == 404 || resp.statusCode == 400 || resp.statusCode == 409) {
+				if (resp.statusCode == 404 || resp.statusCode == 400 || resp.statusCode == 409 || resp.statusCode !== 200) {
 					console.log(`${resp.statusCode}: ${err}`);
 					res.send(`${resp.statusCode}: ${err}`);
 				}

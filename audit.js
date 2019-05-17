@@ -4,6 +4,7 @@ const path = require('path');
 const readlineSync = require('readline-sync');
 var menu = require('node-menu');
 var Table = require('cli-table');
+const ls = require('log-symbols');
 
 const {
 	PORT,
@@ -54,10 +55,10 @@ function PatientCCDAUploadAudit(){
 	// sending a get request with the query params
 	request({url:`http://${HIE_IP}:${PORT}/PatientCCDAUploadAudit`, qs: query}, function(err, resp, body) {
 		if (err)
-			console.log(`Error: ${err}`);
+			console.log(ls.error, `Error: ${err}`);
 		else {
-			if (resp.statusCode == 404 || resp.statusCode == 400 || resp.statusCode == 409 || resp.statusCode == 422)
-				console.log(body);
+			if (resp.statusCode == 404 || resp.statusCode == 400 || resp.statusCode == 409 || resp.statusCode == 422 || resp.statusCode != 200)
+				console.log(ls.error, body);
 			else {
 				let AA = JSON.parse(resp.body);
 				// console.log(AA);
@@ -86,12 +87,12 @@ function PatientAllCCDARequestAudit(){
 	query.SSN = readlineSync.question("Enter ssn of patient: ");
 
 
-	request({url:`http://${HIE_IP}:${PORT}/PatientAllCCDARequestAudit`, qs: query}, function(err, resp, body) {
+	request({url:`http://${HIE_IP}:${PORT}/api/audit/requests`, qs: query}, function(err, resp, body) {
 		if (err)
-			console.log(`Error: ${err}`);
+			console.log(ls.error, `Error: ${err}`);
 		else {
-			if (resp.statusCode == 404 || resp.statusCode == 400 || resp.statusCode == 409 || resp.statusCode == 422)
-				console.log(body);
+			if (resp.statusCode == 404 || resp.statusCode == 400 || resp.statusCode == 409 || resp.statusCode == 422 || resp.statusCode != 200)
+				console.log(ls.error, body);
 			else {
 				let AA = JSON.parse(resp.body);
 				console.log(AA);

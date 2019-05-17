@@ -259,7 +259,7 @@ async function handleCCDATransfer(req, res) {
 		}
 	}
 	catch (err) {
-		console.error('Error in file lookup: ', err);
+		console.error('Error in file lookup: ', {code:err.code, syscall:err.syscall, path: err.path} );
 		if (err.code === 'ENOENT')
 			res.status(404).send(`File: ${requested_hash+".xml"} does not exist in CCDA Store`);		// 404 : Not FOund
 		else
@@ -360,9 +360,9 @@ async function submitFinishTransferTransaction(patId, hash, owner_id, start_time
 				"hash": "resource:org.transfer.CCDA#${hash}",
 				"requesterId": "resource:org.transfer.Clinic#${CLINIC_ID}",
 				"providerId": "resource:org.transfer.Clinic#${owner_id}",
-				"StartTransId": "${start_timestamp}",
-				"Success": ${success_flag},
-				"ErrorMessage": "${err_msg}"
+				"startTransId": "${start_timestamp}",
+				"success": ${success_flag},
+				"errorMessage": "${err_msg}"
 			}`
 		};
 
@@ -463,32 +463,78 @@ async function getLatestCCDA(pat_id) {
 
 
 async function handleUploadCCDA(req, res) {
+	// Collecting data using query params because busboy overrides body-parser, and handling fields in busboy is tedious
+	const doc_id = req.query.doc_id;
+	const is_final_document = (req.query.is_final_document === 'true')? true : false;			// there is no standard way to handle boolean over query params, so I'm passing it as a string
+	// another option is the busboy-body-parser library.
+	
 	req.pipe(req.busboy);
-	req.busboy.on('file', async function handleBusboyFile(fieldname, file, file_name){
+	
+	req.busboy.on('file', function handleBusboyFile(fieldname, file, file_name) {		// removed aysnc
 		complete_path = path.join(__dirname, ccda_store_path, file_name);
 		fstream = fs.createWriteStream(complete_path);
 		file.pipe(fstream);
-		fstream.on('close', async function () {
-			console.log("Upload Finished of: " + file_name);
-			res_obj.status = `File: ${file_name}, was successfully stored`;
-			let block_data = await preprocess(file_name, ccda_store_path);
-			// console.log(block_data);
-			const hashed_file_name = path.join(__dirname, ccda_store_path, block_data.hash + '.xml');
-			fs.rename(complete_path, hashed_file_name, async function (err) {
-				if (err) {
-					console.log(err);
-				} else {
-					console.log(`File successfully renamed`);
-				}
 
-				await addCCDA(block_data);
-
-				res.send(block_data);
-			});
-		});
+		fstream.on('close', processSavedFile.bind({res:res, file_name:file_name, doc_id:doc_id, is_final_document:is_final_document}));
+		// used .bind() to pass data to callback.
 	});			
 }
 
+async function processSavedFile() {
+	console.log(ls.success, `File: ${this.file_name} saved on disk`);
+	let res_obj = {
+		file_name: this.file_name,
+	};
+	let outer_res = this.res;
+
+	let block_data = await preprocess(this.file_name, ccda_store_path);
+	block_data.doc_id = this.doc_id;
+	block_data.is_final_document = this.is_final_document;
+	console.log(block_data);
+
+	const hashed_file_name = path.join(__dirname, ccda_store_path, block_data.hash + '.xml');
+	fs.rename(complete_path, hashed_file_name, async function (err) {
+		if (err) {
+			console.log(ls.error, err);
+			outer_res.status(500).send({message:"Internal server error"});
+		} else {
+			console.log(ls.success, `File renamed`);
+			await addCCDA(block_data);
+			console.log(ls.success, `CCDA upload process complete`);
+			
+			const merged_obj = {...res_obj, ...block_data};
+			outer_res.send(merged_obj);
+		}
+	});
+}
+
+
+// async function processSavedFile(res, file_name, doc_id, is_final_document) {
+// 	console.log(ls.success, `File: ${file_name} saved on disk`);
+// 	let res_obj = {
+// 		file_name: file_name,
+// 	};
+
+// 	let block_data = await preprocess(file_name, ccda_store_path);
+// 	block_data.doc_id = doc_id;
+// 	block_data.is_final_document = is_final_document;
+// 	console.log(block_data);
+
+// 	const hashed_file_name = path.join(__dirname, ccda_store_path, block_data.hash + '.xml');
+// 	fs.rename(complete_path, hashed_file_name, async function (err) {
+// 		if (err) {
+// 			console.log(ls.error, err);
+// 			res.status(500).send({message:"Internal server error"});
+// 		} else {
+// 			console.log(ls.success, `File renamed`);
+// 			await addCCDA(block_data);
+// 			console.log(ls.success, `CCDA upload process complete`);
+			
+// 			const merged_obj = {...res_obj, ...block_data};
+// 			res.send(merged_obj);
+// 		}
+// 	});
+// }
 
 async function addCCDA(block_data) {
 	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
@@ -497,6 +543,8 @@ async function addCCDA(block_data) {
 		let hash = block_data.hash;
 		let patId = block_data.pat_id;
 		let clinicId = block_data.clinic_id;
+		let docId = block_data.doc_id;
+		let finalUpload = block_data.is_final_document;
 		let factory = businessNetworkDefinition.getFactory();
 
 		let CCDA_Registry = await bizNetworkConnection.getAssetRegistry('org.transfer.CCDA');
@@ -512,6 +560,8 @@ async function addCCDA(block_data) {
 		newCCDA.patId = factory.newRelationship('org.transfer', 'Patient', patId);
 		newCCDA.ownerId = factory.newRelationship('org.transfer', 'Clinic', clinicId);
 		newCCDA.lastUpdate = new Date();
+		newCCDA.docId = docId;
+		newCCDA.finalUpload = finalUpload;
 		await CCDA_Registry.add(newCCDA);
 		console.log("CCDA asset successfully added to the blockchain");
 
@@ -594,6 +644,85 @@ async function computeFileHash(file, dir) {
 }
 app.post('/api/documents', handleUploadCCDA);
 
+// audit endpoints
+app.get('/AddAsset',AddAssetaudit);
+app.get('/PatientCCDAUploadAudit',PatientCCDAUploadAudit);
+app.get('/api/audit/requests', requestAudit);
+app.get('/api/audit/tamper', tamperAudit);
+
+// app.listen(PORT, () => console.log(`Listening on port ${PORT}...`));
+const http = require('http');
+const server = http.createServer(app);
+server.listen(PORT, HIE_IP, () => console.log(`Server of clinic: ${CLINIC_ID} is listening on ${HIE_IP}:${PORT} ...`));
+
+
+
+// function definitions
+
+// input: patient details as query params
+// output: complete request transactions from blockchain
+async function requestAudit(req,res){
+	
+	let pat_id = await createEMPIQuery(req, res);
+	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
+
+	// add contraint of ts
+	const query1 = bizNetworkConnection.buildQuery(`SELECT org.transfer.LocalAccess WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
+	const query2 = bizNetworkConnection.buildQuery(`SELECT org.transfer.StartTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
+	const query3 = bizNetworkConnection.buildQuery(`SELECT org.transfer.FinishTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);	
+	
+	// wrap query in try catch
+	// const AccessedAssets = await bizNetworkConnection.query(query1);
+	// const StartedAssets = await bizNetworkConnection.query(query2);
+	const FinishedAssets = await bizNetworkConnection.query(query3);
+
+	// merge results
+	// let assets = AccessedAssets;
+	let assets = FinishedAssets;
+
+	console.log("***************");
+	console.log(assets);
+	console.log("***************");
+
+
+	if (assets.length == 0) {
+		console.log(ls.error, "CCDA not found in blockchain");
+		return null;
+	}
+		res.send(assets);
+}
+
+async function tamperAudit(req,res) {
+	
+	// req.body.doc_id
+	let doc_id = "D123";
+
+	let pat_id = await createEMPIQuery(req, res);
+	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
+
+	const query1 = bizNetworkConnection.buildQuery('SELECT org.hyperledger.composer.system.AddAsset where ');
+	
+	// wrap query in try catch
+	// const AccessedAssets = await bizNetworkConnection.query(query1);
+	// const StartedAssets = await bizNetworkConnection.query(query2);
+	const FinishedAssets = await bizNetworkConnection.query(query3);
+
+	// merge results
+	// let assets = AccessedAssets;
+	let assets = FinishedAssets;
+
+	console.log("***************");
+	console.log(assets);
+	console.log("***************");
+
+
+	if (assets.length == 0) {
+		console.log(ls.error, "CCDA not found in blockchain");
+		return null;
+	}
+		res.send(assets);
+}
+
 async function AddAssetaudit(req,res){
 	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
 	// let historian = await bizNetworkConnection.getHistorian();
@@ -638,7 +767,6 @@ async function AddAssetaudit(req,res){
     console.log(typeof AA);
     res.send(AA);
 }
-app.get('/AddAsset',AddAssetaudit);
 
 async function PatientCCDAUploadAudit(req,res){
 	
@@ -657,45 +785,3 @@ async function PatientCCDAUploadAudit(req,res){
 	}
 		res.send(assets);
 }
-app.get('/PatientCCDAUploadAudit',PatientCCDAUploadAudit);
-
-async function PatientAllCCDARequestAudit(req,res){
-	
-	let pat_id = await createEMPIQuery(req, res);
-	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
-
-	// add contraint of ts
-	const query1 = bizNetworkConnection.buildQuery(`SELECT org.transfer.LocalAccess WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
-	const query2 = bizNetworkConnection.buildQuery(`SELECT org.transfer.StartTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
-	const query3 = bizNetworkConnection.buildQuery(`SELECT org.transfer.FinishTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);	
-	
-	// wrap query in try catch
-	// const AccessedAssets = await bizNetworkConnection.query(query1);
-	// const StartedAssets = await bizNetworkConnection.query(query2);
-	const FinishedAssets = await bizNetworkConnection.query(query3);
-
-	// merge results
-	// let assets = AccessedAssets;
-	let assets = FinishedAssets;
-
-	console.log("***************");
-	console.log(assets);
-	console.log("***************");
-
-
-	if (assets.length == 0) {
-		console.log(ls.error, "CCDA not found in blockchain");
-		return null;
-	}
-		res.send(assets);
-}
-app.get('/PatientAllCCDARequestAudit',PatientAllCCDARequestAudit);
-
-// Creation of EMPI
-
-
-
-// app.listen(PORT, () => console.log(`Listening on port ${PORT}...`));
-const http = require('http');
-const server = http.createServer(app);
-server.listen(PORT, HIE_IP, () => console.log(`Server of clinic: ${CLINIC_ID} is listening on ${HIE_IP}:${PORT} ...`));
