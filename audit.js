@@ -5,6 +5,7 @@ const readlineSync = require('readline-sync');
 var menu = require('node-menu');
 var Table = require('cli-table');
 const ls = require('log-symbols');
+const dateformat = require('dateformat');
 
 const {
 	PORT,
@@ -114,6 +115,7 @@ function PatientAllCCDARequestAudit(){
 					const docId = AA[i].docId;
 					const docName = AA[i].docName;
 					const reasonForAccess = AA[i].reasonForAccess;
+					const ts = AA[i].timestamp;
 
 					let requesterId = AA[i].requesterId;
 				    let providerId = AA[i].providerId;
@@ -129,6 +131,7 @@ function PatientAllCCDARequestAudit(){
 					console.log("docId:", docId);
 					console.log("docName:", docName);
 					console.log("Reason for access:", reasonForAccess);
+					console.log("Access Time: ",dateformat(ts, 'dddd, mmmm dS, yyyy, h:MM:ss TT'));
 
 					if (!isLocalAccess) {
 						console.log();
