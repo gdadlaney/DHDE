@@ -273,11 +273,11 @@ async function submitLocalAccessTransaction(patId, hash, owner_id, start_timesta
 		if(!start_timestamp){
 			start_timestamp = new Date();
 		}
-		if (docId === undefined)
+		if (!docId)
 			docId = "";
-		if (docName === undefined)
+		if (!docName)
 			docName = "";
-		if (reason === undefined)
+		if (!reason)
 			reason = "";
 		
 		let TransactionSubmit = require('composer-cli').Transaction.Submit;
@@ -290,15 +290,15 @@ async function submitLocalAccessTransaction(patId, hash, owner_id, start_timesta
 				"hash": "resource:org.transfer.CCDA#${hash}",
 				"requesterId": "resource:org.transfer.Clinic#${CLINIC_ID}",
 				"providerId": "resource:org.transfer.Clinic#${owner_id}",
-				"StartTransId": "${start_timestamp}",
+				"startTransId": "${start_timestamp}",
 				"docId": "${docId}",
-				"docName": "${docName}"
+				"docName": "${docName}",
+				"reasonForAccess":	"${reason}"
 			}`
-			// ,"reason":	"${reason}"
 		};
 		TransactionSubmit.handler(options);
 	} catch (error) {
-		console.error('Error in submitting Local Access transaction:', error);
+		console.error(ls.error, 'Error in submitting Local Access transaction:', error);
 	}
 }
 
@@ -659,6 +659,7 @@ server.listen(PORT, HIE_IP, () => console.log(`Server of clinic: ${CLINIC_ID} is
 
 // function definitions
 
+// todo: refactor
 // input: patient details as query params
 // output: complete request transactions from blockchain
 async function requestAudit(req,res){
@@ -667,29 +668,81 @@ async function requestAudit(req,res){
 	const { bizNetworkConnection, businessNetworkDefinition } = await connect();
 
 	// add contraint of ts
-	const query1 = bizNetworkConnection.buildQuery(`SELECT org.transfer.LocalAccess WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
-	const query2 = bizNetworkConnection.buildQuery(`SELECT org.transfer.StartTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
-	const query3 = bizNetworkConnection.buildQuery(`SELECT org.transfer.FinishTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);	
-	
+	let LA_query = bizNetworkConnection.buildQuery(`SELECT org.transfer.LocalAccess WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
+	let ST_query = bizNetworkConnection.buildQuery(`SELECT org.transfer.StartTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
+	let FT_query = bizNetworkConnection.buildQuery(`SELECT org.transfer.FinishTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);	
+
 	// wrap query in try catch
-	// const AccessedAssets = await bizNetworkConnection.query(query1);
-	// const StartedAssets = await bizNetworkConnection.query(query2);
-	const FinishedAssets = await bizNetworkConnection.query(query3);
+	const bigAccessedAssets = await bizNetworkConnection.query(LA_query);
+	const bigStartedAssets = await bizNetworkConnection.query(ST_query);
+	const bigFinishedAssets = await bizNetworkConnection.query(FT_query);
 
 	// merge results
 	// let assets = AccessedAssets;
-	let assets = FinishedAssets;
+	// let assets = finishedAssets;
+	// loop 
+	// WHERE startTransId ==${ret}
 
-	console.log("***************");
-	console.log(assets);
-	console.log("***************");
+	// console.log("******* NormalFinishedAssets ********");
+	// console.log(assets);
+	// console.log("***************");
+	
+	// ** JSON.stringify() reduces thes messy object, somehow
+	// console.log("******* StartedAssets ********");
+	// const small_start_assets = JSON.parse(JSON.stringify(startedAssets));
+	// console.log(small_start_assets);
+	// console.log("***************");
 
+	// console.log("******* finishedAssets ********");
+	// const small_finish_assets = JSON.parse(JSON.stringify(finishedAssets));
+	// console.log(small_finish_assets);
+	// console.log("***************");
 
-	if (assets.length == 0) {
-		console.log(ls.error, "CCDA not found in blockchain");
-		return null;
+	// console.log("******* accessedAssets ********");
+	// const small_access_assets = JSON.parse(JSON.stringify(accessedAssets));
+	// console.log(small_access_assets);
+	// console.log("***************");
+
+	// merge results
+	let assets = [];
+	// ** JSON.stringify() reduces thes messy object, somehow
+	const accessed_assets = JSON.parse(JSON.stringify(bigAccessedAssets));
+	const started_assets = JSON.parse(JSON.stringify(bigStartedAssets));
+	const finished_assets = JSON.parse(JSON.stringify(bigFinishedAssets));
+
+	for (let i=0; i<accessed_assets.length; i++) {
+		assets.push({...accessed_assets[i]});			// cloning object
+		let ts_id = accessed_assets[i].startTransId;
+
+		ST_query = bizNetworkConnection.buildQuery(`SELECT org.transfer.StartTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}" AND timestampId=="${ts_id}")  `);
+		FT_query = bizNetworkConnection.buildQuery(`SELECT org.transfer.FinishTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}" AND startTransId=="${ts_id}")  `);
+		let started_asset = await bizNetworkConnection.query(ST_query);
+		let finished_asset = await bizNetworkConnection.query(FT_query);
+		started_asset = JSON.parse(JSON.stringify(started_asset));
+		finished_asset = JSON.parse(JSON.stringify(finished_asset));
+
+		if (!finished_asset[0]) {
+			assets[i].success = undefined;
+			assets[i].errorMessage = undefined;
+		} else {
+			assets[i].success = finished_asset[0].success;
+			assets[i].errorMessage = finished_asset[0].errorMessage;
+		}
 	}
+	// another merge strategy could be query all, then find in those respective objects, but may be too memory hungry as transactions increase.
+
+	console.log("------------ finalAssets --------------");
+	console.log(assets);
+	console.log("---------------------------------------");
+
+	if (assets.length == 0) {		// can also send back empty array to be interpreted by it.
+		const message = "No access logs of patient found in transaction log";
+		console.log(ls.info, message);
+		res.status(404).send({message: message});
+	} else {
 		res.send(assets);
+		// res.json(assets);
+	}
 }
 
 async function tamperAudit(req,res) {

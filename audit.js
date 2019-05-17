@@ -78,6 +78,7 @@ function PatientCCDAUploadAudit(){
 		}
 	});
 }
+
 function PatientAllCCDARequestAudit(){
 	console.log("Please enter patient information. Press enter to skip");
 	const query = {};
@@ -94,26 +95,49 @@ function PatientAllCCDARequestAudit(){
 			if (resp.statusCode == 404 || resp.statusCode == 400 || resp.statusCode == 409 || resp.statusCode == 422 || resp.statusCode != 200)
 				console.log(ls.error, body);
 			else {
+				// console.log(resp.body);
+
 				let AA = JSON.parse(resp.body);
-				console.log(AA);
+				// console.log(AA);
 				// var table = new Table({
 				//     head: ['requesterId','providerId','PatientId','TimeStamp','Hash','Success'],
 				//     colWidths:[10,10,10,40,70,10]
 				// });
 				for(i=0;i<AA.length;i++){
 					var j=i+1;
-				    console.log("---------------------"+"Record "+j+"--------------------------------------------");
+				    console.log("-----------------------------"+"Record "+j+"-----------------------------");
 					let table_data = [];
-				    let requesterId = AA[i].requesterId;
+
+					const hash = AA[i].hash;
+					let patId = AA[i].patId;
+					
+					const docId = AA[i].docId;
+					const docName = AA[i].docName;
+					const reasonForAccess = AA[i].reasonForAccess;
+
+					let requesterId = AA[i].requesterId;
 				    let providerId = AA[i].providerId;
-				    let patient_details = AA[i].patId;
-				    let success = AA[i].Success;
-				    console.log("Hash: ",AA[i].hash.substr(27));
-				    console.log("Requester: ",requesterId.substr(requesterId.length - 3));
-				    console.log("Provider: ",providerId.substr(providerId.length - 3));
-				    console.log("Pat_Id:",patient_details.substr(patient_details.length - 4));
-				    console.log("Success:",success);
-				    console.log("-----------------------------------------------------------------");
+					let success = AA[i].success;
+					const errorMessage = AA[i].errorMessage;
+					
+					const isLocalAccess = (!success && !errorMessage);
+					const accessType = isLocalAccess? "Local Access" : "File Transfer and Local Access";
+
+					console.log("accessType: ", accessType);
+					console.log("hash: ",hash.substr(27));
+					console.log("patId:", patId.substr(patId.length - 4));
+					console.log("docId:", docId);
+					console.log("docName:", docName);
+					console.log("Reason for access:", reasonForAccess);
+
+					if (!isLocalAccess) {
+						console.log();
+						console.log("Successful transfer:",success);
+						console.log("errorMessage:",success);
+						console.log("Requester: ",requesterId.substr(requesterId.length - 3));
+						console.log("Provider: ",providerId.substr(providerId.length - 3));
+					}
+				    console.log("------------------------------------------------------------------");
 				    // table.push([requesterId.substr(requesterId.length - 3),providerId.substr(providerId.length - 3),patient_details.substr(patient_details.length - 4),new Date(AA[i].timestamp),AA[i].hash],success);
 				    
 			 	}

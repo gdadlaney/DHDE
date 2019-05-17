@@ -30,8 +30,9 @@ function UploadFile(){
 	const filepath = `./ehr_store/${filename}`;
 	
 	const doc_id = readlineSync.question("Enter doctor id of the uploader: ");
-	let temp = readlineSync.question("Is this the final document to be shared (Y/N): ");
-	const is_final_document = (temp.toLowerCase() === 'y')? true : false;
+	// let temp = readlineSync.question("Is this the final document to be shared (Y/N): ");
+	// const is_final_document = (temp.toLowerCase() === 'y')? true : false;
+	const is_final_document = true;				// hard coded for now
 
 	// Adding query params
 	temp = (is_final_document === true)? "true" : "false";		// booleans not allowed on query params, hence passing it as a string
