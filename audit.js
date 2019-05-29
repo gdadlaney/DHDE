@@ -106,7 +106,7 @@ function PatientAllCCDARequestAudit(){
 				// });
 				for(i=0;i<AA.length;i++){
 					var j=i+1;
-				    console.log("-----------------------------"+"Record "+j+"-----------------------------");
+				    console.log("-----------------------------------------"+"Record "+j+"-----------------------------------------");
 					let table_data = [];
 
 					const hash = AA[i].hash;
@@ -125,13 +125,13 @@ function PatientAllCCDARequestAudit(){
 					const isLocalAccess = (!success && !errorMessage);
 					const accessType = isLocalAccess? "Local Access" : "File Transfer and Local Access";
 
-					console.log("accessType: ", accessType);
-					console.log("hash: ",hash.substr(27));
-					console.log("patId:", patId.substr(patId.length - 4));
-					console.log("docId:", docId);
-					console.log("docName:", docName);
+					console.log("Access Type      :", accessType);
+					console.log("Hash             :", hash.substr(27));
+					console.log("Patient Id       :", patId.substr(patId.length - 4));
+					console.log("Doctor Id        :", docId);
+					console.log("Doctor Name      :", docName);
 					console.log("Reason for access:", reasonForAccess);
-					console.log("Access Time: ",dateformat(ts, 'dddd, mmmm dS, yyyy, h:MM:ss TT'));
+					console.log("Access Time      : ",dateformat(ts, 'dddd, mmmm dS, yyyy, h:MM:ss TT'));
 
 					if (!isLocalAccess) {
 						console.log();
@@ -140,7 +140,7 @@ function PatientAllCCDARequestAudit(){
 						console.log("Requester: ",requesterId.substr(requesterId.length - 3));
 						console.log("Provider: ",providerId.substr(providerId.length - 3));
 					}
-				    console.log("------------------------------------------------------------------");
+				    console.log("------------------------------------------------------------------------------------------");
 				    // table.push([requesterId.substr(requesterId.length - 3),providerId.substr(providerId.length - 3),patient_details.substr(patient_details.length - 4),new Date(AA[i].timestamp),AA[i].hash],success);
 				    
 			 	}

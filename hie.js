@@ -671,6 +671,7 @@ async function requestAudit(req,res){
 	let LA_query = bizNetworkConnection.buildQuery(`SELECT org.transfer.LocalAccess WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
 	let ST_query = bizNetworkConnection.buildQuery(`SELECT org.transfer.StartTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);
 	let FT_query = bizNetworkConnection.buildQuery(`SELECT org.transfer.FinishTransfer WHERE (patId=="resource:org.transfer.Patient#${pat_id}")`);	
+	//  ORDER BY [startTransId] needs some index
 
 	// wrap query in try catch
 	const bigAccessedAssets = await bizNetworkConnection.query(LA_query);
@@ -678,37 +679,15 @@ async function requestAudit(req,res){
 	const bigFinishedAssets = await bizNetworkConnection.query(FT_query);
 
 	// merge results
-	// let assets = AccessedAssets;
-	// let assets = finishedAssets;
-	// loop 
-	// WHERE startTransId ==${ret}
-
-	// console.log("******* NormalFinishedAssets ********");
-	// console.log(assets);
-	// console.log("***************");
-	
-	// ** JSON.stringify() reduces thes messy object, somehow
-	// console.log("******* StartedAssets ********");
-	// const small_start_assets = JSON.parse(JSON.stringify(startedAssets));
-	// console.log(small_start_assets);
-	// console.log("***************");
-
-	// console.log("******* finishedAssets ********");
-	// const small_finish_assets = JSON.parse(JSON.stringify(finishedAssets));
-	// console.log(small_finish_assets);
-	// console.log("***************");
-
-	// console.log("******* accessedAssets ********");
-	// const small_access_assets = JSON.parse(JSON.stringify(accessedAssets));
-	// console.log(small_access_assets);
-	// console.log("***************");
-
-	// merge results
 	let assets = [];
 	// ** JSON.stringify() reduces thes messy object, somehow
 	const accessed_assets = JSON.parse(JSON.stringify(bigAccessedAssets));
 	const started_assets = JSON.parse(JSON.stringify(bigStartedAssets));
 	const finished_assets = JSON.parse(JSON.stringify(bigFinishedAssets));
+
+	// console.log("*********** All assets *****************");
+	// console.log(started_assets, finished_assets, accessed_assets);
+	// console.log("***************************************");
 
 	for (let i=0; i<accessed_assets.length; i++) {
 		assets.push({...accessed_assets[i]});			// cloning object
@@ -729,11 +708,13 @@ async function requestAudit(req,res){
 			assets[i].errorMessage = finished_asset[0].errorMessage;
 		}
 	}
-	// another merge strategy could be query all, then find in those respective objects, but may be too memory hungry as transactions increase.
 
-	console.log("------------ finalAssets --------------");
-	console.log(assets);
-	console.log("---------------------------------------");
+	// another merge strategy could be query all, then find in those respective objects, but may be too memory hungry as transactions increase.
+	// using a hash-map(obj) and a set
+
+	// console.log("------------ finalAssets --------------");
+	// console.log(assets);
+	// console.log("---------------------------------------");
 
 	if (assets.length == 0) {		// can also send back empty array to be interpreted by it.
 		const message = "No access logs of patient found in transaction log";
